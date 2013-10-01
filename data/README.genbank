@@ -1,0 +1,729 @@
+===============================================================================
+
+GenBank Flat File Release 196.0 
+		
+	FTP Site:  ftp.ncbi.nih.gov
+	Directory: genbank
+	URL:       ftp://ftp.ncbi.nih.gov/genbank
+
+        Release Date:    June 15, 2013
+        Close-Of-Data:   June 13, 2013
+
+The files in this directory comprise GenBank Release 196.0, in the
+GenBank flatfile format. Updates to Release 196.0, the WGS component of
+GenBank, lists of accession number identifiers, and prior release notes
+are available in various subdirectories (see below).
+
+GenBank is a component of a tri-partite collaboration of sequence databases
+in the U.S., Europe, and Japan, known as the International Nucleotide Sequence
+Database Collaboration (INSDC ; http://www.insdc.org ). The collaborating
+databases are the European Nucleotide Archive (part of the European Molecular
+Biology Laboratory; EMBL) in Hinxton UK on the Wellcome Trust Genome Campus,
+and the DNA Database of Japan (DDBJ) in Mishima, Japan. Patent sequences
+are incorporated through arrangements with the U.S. Patent and Trademark
+Office, and via the collaborating international databases from other
+international patent offices. The database is converted to various output
+formats, including the GenBank Flatfile and Abstract Syntax Notation 1 (ASN.1)
+versions. The ASN.1 form of the data is utilized by www-Entrez and
+network-Entrez and is also available, as is the Flatfile version, by
+anonymous FTP to 'ftp.ncbi.nih.gov'.
+
+For additional information and the GenBank flatfile specification see the
+GenBank release notes (gbrel.txt) in this directory.
+
+GenBank releases do not include sequence records that originate from
+third-parties (TPA) or from NCBI's Reference Sequence (RefSeq) project.
+Rather, GenBank is the archival/primary resource drawn upon by those
+other efforts. For information about TPA and RefSeq, please refer to:
+
+	http://www.ncbi.nih.gov/genbank/TPA.html
+	http://www.ncbi.nlm.nih.gov/RefSeq
+
+GenBank releases also do not contain sequence records that originate
+from unfinished Whole Genome Shotgun (WGS) genome sequencing projects.
+The sequence-overlap contigs that are assembled from WGS reads are
+made available separately, on a per-project basis:
+
+	ftp://ftp.ncbi.nih.gov/genbank/wgs/
+
+See the section titled 'GenBank WGS Projects', below, for more information.
+
+Alternative FTP Sites
+
+A mirror of NCBI's GenBank FTP site is available at Indiana University,
+courtesy of the Bio-Mirror project:
+
+        ftp://bio-mirror.net/biomirror/genbank/
+
+Some users who experience slow FTP transfers of large files might realize
+an improvement in transfer rates from this alternate site when the volume
+of traffic at the NCBI is high. For a list of other Bio-Mirror nodes, visit:
+
+        http://www.bio-mirror.net/
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+Protein sequences
+
+  The protein sequences present in GenBank releases, via coding regions
+annotated on GenBank records, are made available via files located
+elsewhere at the NCBI FTP site:
+
+	FTP Site:  ftp.ncbi.nih.gov
+	Directory: ncbi-asn1/protein_fasta
+	URL:       ftp://ftp.ncbi.nih.gov/ncbi-asn1/protein_fasta
+
+  These files replace the single, comprehensive protein FASTA which
+used to be provided in this directory ( relNNN.fsa_aa.gz ).
+
+Please see the README in the /protein_fasta directory for further information.
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+New, changed, and deleted entries
+
+  Entries new, changed, or deleted in Release 196.0 are listed in files
+gbnew.txt.gz, gbchg.txt.gz, and gbdel.txt.gz, respectively. Each line of these
+files consists of a 3- or 4-character GenBank division abbreviation, followed
+by a vertical bar, followed by an accession number.
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+CON Division
+
+Sequence records in the files of the CON division (gbcon*.seq) are unusual in
+that they contain no sequence data at all. Rather, records in these files contain
+instructions for the construction of larger-scale objects from 'traditional'
+GenBank records.
+
+CON records do not contribute to the statistics for GenBank releases, however
+there are record and basepair counts in the header of each gbcon*.seq file.
+
+CON division records are "CONstructed" from others, hence the division's name.
+It includes three different types of records:
+
+The first class of CON records are scaffolds built from the sequence-overlap
+contigs of WGS and other sequencing projects. These scaffolds can be as large as
+entire chromosomes, depending on the depth of coverage of the WGS project and
+the extent of repetitive sequence in the genome.
+
+The second class results from splitting large complete genomes into multiple
+pieces (a practice that was used when maximum sequence length limits existed
+for GenBank). For example, a bacterial genome might be split into several
+hundred records (without interrupting any genes or coding regions), with a small
+overlap between each piece. The CON division entries for such genomes provide
+instructions for the re-assembly of the complete genome from the individual pieces.
+This class of CON division record is nearly obsolete, as previously-split genomes
+are actively being identified and converted to back to 'normal' (non-CON) 
+representations. 
+
+The third class of data in the CON division is derived from "segmented sets".
+Genomic DNA sequences can sometimes be incomplete because a submittor might choose to
+sequence just the exons, small portions of the intervening introns, and perhaps some
+upstream or downstream control regions. These related sequences are labelled
+"1 of N", "2 of N", etc, via the SEGMENT line in the GenBank flatfile format. There
+is often a coding region feature on the last member, with a join() location pointing
+to the exon intervals which contribute to the coding sequence. Gaps of unknown size
+typically exist between the sequenced pieces.
+
+  Entries in the gbcon*.seq files make the relationships among such pieces more
+explicit. In addition, these entries have accession numbers, version numbers, and
+NCBI GIs, just like regular GenBank records. Here's an example illustrating these
+points:
+
+LOCUS       AH007743     7832 bp    DNA             CON       26-MAY-1999
+DEFINITION  Gallus gallus ornithine transcarbamylase (OTC) gene, complete cds.
+ACCESSION   AH007743
+VERSION     AH007743.1  GI:4927367
+KEYWORDS    .
+SOURCE      chicken.
+  ORGANISM  Gallus gallus
+            Eukaryota; Metazoa; Chordata; Craniata; Vertebrata; Archosauria;
+            Aves; Neognathae; Galliformes; Phasianidae; Phasianinae; Gallus.
+[....]
+FEATURES             Location/Qualifiers
+     source          1..7832
+                     /organism="Gallus gallus"
+                     /db_xref="taxon:9031"
+                     /chromosome="1"
+CONTIG      join(AF065630.1:1..1903,gap(),AF065631.1:1..435,gap(),
+            AF065632.1:1..509,gap(),AF065633.1:1..722,gap(),AF065634.1:1..707,
+            gap(),AF065635.1:1..836,gap(),AF065636.1:1..1614,gap(),
+            AF065637.1:1..605,gap(),AF065638.1:1..501)
+//
+
+  This third class of CON division records is no longer being generated. Records
+of this class may exhibit some unusual characteristics:
+
+  o if all literature references for the members of a segmented set are
+    associated with an incomplete span of the sequence, no references appear
+    at all for the constructed CON division entry
+  o definition lines for segmented-set CON entries are sometimes less than ideal:
+    - genus and species only
+    - the content reflects one member of the segset, not the set as a whole
+
+These problems will be addressed as time allows.
+
+If problems other than those described above are encountered, we'd like to hear of
+them. Please send your problem reports to the NCBI Service Desk:
+
+	info@ncbi.nlm.nih.gov
+
+===============================================================================
+
+Quality Score Data:
+
+	FTP Site:  ftp.ncbi.nih.gov
+	Directory: genbank/quality_scores
+	URL:       ftp://ftp.ncbi.nih.gov/genbank/quality_scores/
+
+Some of the sequence data in GenBank originating from large-scale projects
+(eg, the Human Genome Project) is accompanied by quality score information.
+These quality scores are generated by base-calling programs such as phred and
+phrap, and usually consist of integers ranging from 0 through 100, one
+integer per base.
+
+The ASN.1 version of the data used to generate a GenBank flatfile release
+incorporates quality score data via Seq-graph annotation objects. This
+annotation is then converted to a FASTA-like textual format and presented
+in this directory, for those users who do not process ASN.1.
+
+Quality score files have been compressed using gzip, and follow a naming
+convention of gb*.qscore.gz .
+
+There is a direct correspondence between the FASTA-like quality score files
+in this directory and the ASN.1 data used to build GenBank releases. For example:
+
+	ftp://ftp.ncbi.nih.gov/ncbi-asn1/gbhtg1.aso.gz
+and:
+	ftp://ftp.ncbi.nih.gov/genbank/quality_scores/gbhtg1.qscore.gz
+
+are equivalent in content (in terms of the sequences that are represented).
+
+However, since the sequence flatfiles for GenBank release are maintained and
+dumped independently of the ASN.1 data, gbhtg1.seq.gz and gbhtg1.qscore.gz
+are *NOT* directly related.
+
+GenBank flatfile gbhtg1.seq.gz is likely to contain sequences not present in 
+quality score file gbhtg1.qscore.gz, and vice versa.
+
+===============================================================================
+
+GenBank Incremental Updates:
+
+	FTP Site:  ftp.ncbi.nih.gov
+	Directory: genbank/daily-nc
+	URL:       ftp://ftp.ncbi.nih.gov/genbank/daily-nc/
+
+This directory contains individual files for each day's new or updated
+sequence entries, processed since the June 13, 2013 close-of-data
+date of GenBank Release 196.0, in the GenBank flatfile format.
+
+Two classes of GenBank Incremental Updates (GIUs) exist : one containing
+traditional records, and a second containing only CON division records.
+
+The file names used by these two GIU classes are of the form:
+
+	ncMMDD.flat.gz
+	con_nc.MMDD.flat.gz
+
+where 'MM' represents a 2-digit value for the month, and 'DD' represents a
+two-digit value for the year. For example:
+
+	nc0614.flat.gz
+	con_nc.0614.flat.gz
+
+GIU files are compressed using the gzip compression utility, hence the
+".gz" filename suffix.
+
+Entries undergoing successive updates on different days will be present in
+more than one GIU file. However, a single GIU will not contain multiple
+versions of an entry that has undergone several updates within a single day.
+
+NOTE: See the GenBank Release README for further information about CON
+division GenBank records:
+
+	ftp://ftp.ncbi.nih.gov/genbank/README.genbank
+
+A flatfile GIU is generated by performing a series of ASN.1 dumps from the
+databases at NCBI that are used to maintain GenBank, including:
+
+a) All non-HUP (hold-until-publish) entries directly submitted to
+   GenBank, or updated at GenBank, during a single day.
+b) A single day's new and updated entries received from the EMBL sequence
+   database.
+c) A single day's new and updated entries received from the DDBJ sequence
+   database.
+d) All EST sequences added or updated via the NCBI dbEST database on that
+   same day.
+e) All STS sequences added or updated via the NCBI dbSTS database on that
+   same day.
+f) All GSS sequences added or updated via the NCBI dbGSS database on that
+   same day.
+g) All Mammalian Gene Collection sequences added or updated via the
+   NCBI MGC database on that same day.
+
+GenBank flatfiles for ASN.1 dumps (a) through (g) are generated, and
+are then combined into a single compressed flatfile and installed
+in this ftp directory.
+
+A file called "Last.File" in this directory contains the name of the
+most recently generated GIU.
+
+GIU processing starts at 1:30am Eastern Time and is usually complete by 3:30am.
+The recommended time to look for and transfer new GIU updates from the NCBI
+FTP site is 4:30am ET. 
+
+===============================================================================
+
+GenBank WGS Projects
+
+    FTP Site:  ftp.ncbi.nih.gov
+    Directory: genbank/wgs
+    URL:       ftp://ftp.ncbi.nih.gov/genbank/wgs/
+
+This directory contains data files in a variety of formats for the
+sequence-overlap contigs of all Whole Genome Shotgun (WGS) sequencing
+projects that have been submitted to the GenBank sequence database.
+
+Data files for each project are grouped by a stable 4-letter WGS Project Code.  
+
+Available WGS data files for each project can include:
+
+    wgs.XXXX.(##.)gbff.gz     Nucleotide GenBank flatfiles
+    wgs.XXXX.(##.)fsa_nt.gz   Nucleotide FASTA files
+    wgs.XXXX.(##.)qscore.gz   Nucleotide Quality-Score files
+
+    wgs.XXXX.(##.)gnp.gz      Protein GenPept flatfiles
+    wgs.XXXX.(##.)fsa_aa.gz   Protein FASTA files
+
+    stats.wgs.XXXX            Summary nucleotide statistics
+
+where 'XXXX' represents a WGS Project Code (for example, AAVP), and '(##.)'
+represents a serial file-number. Because WGS projects can be large, they
+are split into a series of numbered files:
+
+    wgs.AAVP.1.gbff.gz
+    wgs.AAVP.2.gbff.gz
+
+    wgs.AAVP.1.fsa_nt.gz
+    wgs.AAVP.2.fsa_nt.gz
+
+    wgs.AAVP.1.gnp.gz
+    wgs.AAVP.2.gnp.gz
+
+    wgs.AAVP.1.fsa_aa.gz
+    wgs.AAVP.2.fsa_aa.gz
+
+Quality score and GenPept files will only be available if sequencing scores
+have been provided, or if the contigs of a project have been annotated with
+coding-region features.
+
+The WGS statistics files provide a summary of each WGS project's status.
+Data included are: project code, assembly-version number, total number of
+contigs in the project, total number of nucleotide basepairs, and the lengths
+of the largest and smallest contigs.
+		
+All WGS data files have been compressed using the gzip compression utility,
+and hence have a ".gz" filename suffix.
+
+WGS processing starts after the non-WGS GenBank Incremental Update has
+completed, and WGS files are usually available by 4:30am ET. The recommended
+time to look for and transfer new WGS data from the NCBI FTP site is 5:00am ET.
+But be aware that the bulk nature of WGS projects can sometimes require more
+processing time and delay file availability, particularly when multiple large
+projects have to be processed on one day.
+
+For more information about the WGS division of GenBank, and definitions of
+terms such as 'assembly-version', please visit:
+	
+	http://www.ncbi.nlm.nih.gov/Genbank/wgs.html
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+NOTE: Prior to September 2004, serial numbers were included in WGS filenames
+only if the total size of a project exceeded a threshold value. Starting in
+September 2004, we adopted a policy of uniformly including the serial number
+for every project, regardless of size.
+
+As a result, one can still encounter older, small WGS projects without serial
+numbers. For example:
+
+	wgs.AAES.gbff.gz    (old style)
+versus
+	wgs.AAFV.1.gbff.gz  (new style)
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+Daily WGS Project-Lists:
+
+Companion WGS Project-Lists that may help facilitate the processing of WGS data
+are also provided. These lists were made available starting in October 2005.
+
+Project-Lists utilize a file-naming convention of:
+
+    proj_list.YYYY.MMDD
+	
+where 'YYYY' represents a 4-digit year, and 'MMDD' respresents a two-digit
+month and two-digit day. For example:
+
+    proj_list.2005.1001  
+
+For every day on which new WGS data files are installed in the WGS FTP area,
+a Project-List is provided that briefly describes the circumstances of the
+processing which required that installation.
+
+Each line of a Project-List contains three fields, delimited by vertical
+bars:
+
+    Project-Action
+    WGS Project Code
+    Assembly-Version
+
+For example, the Project-List for January 23 2007 was named:
+
+    proj_list.2007.0123
+
+and this file contained:
+
+    reassembled|AAVN|02
+    new|AAWS|01
+    new|AAWC|01
+
+There are four possible 'Project-Action' values:
+
+    new: used for new WGS projects, being installed in the WGS area for
+         the first time
+
+    reassembled: indicates that a WGS project has undergone a re-assembly.
+
+    updated: indicates that new contigs have been added to a WGS project,
+         or that one or more of the contigs has been updated in some way;
+         however, the assembly-version for the project as a whole is unchanged
+
+    refreshed: indicates that all of the files for a WGS project have been
+         rebuilt and re-installed. This action might occur for a relatively
+         minor update that affects all the project contigs, such as a
+         publication update (in-press -> published). A project might also be
+         'refreshed' if it is found to contain contaminant contigs.
+
+One possible use of the WGS Project-Lists is to prioritize processing of
+WGS data. Projects that are 'new' or 'reassembled' are almost certain to
+be of immediate interest to all users of WGS data. But 'updated' or
+'refreshed' projects might require a different approach, particularly if the
+project consists of millions of sequences.
+
+Note that the summary statistics file for each WGS project could be of
+some help in making prioritization decisions.
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+Other points of interest:
+
+When data for a WGS project are made available for any of the four
+Project-Actions described above, any existing files for that project are
+removed prior to the installation of new files.
+
+Only data for the most recent assembly-version of a WGS project is provided
+in the WGS FTP area.
+
+Higher-level CON-division records (scaffolds/super-contigs, chromosomes, etc)
+that are built from WGS contigs are *not* presented in this WGS FTP area. For
+more information about CON division GenBank records, see:
+
+	ftp://ftp.ncbi.nih.gov/genbank/README.genbank
+
+===============================================================================
+
+GenBank Transcriptome Shotgun Assembly (TSA) Projects
+
+    FTP Site:  ftp.ncbi.nih.gov
+    Directory: genbank/tsa
+    URL:       ftp://ftp.ncbi.nih.gov/genbank/tsa
+
+This directory contains data files in several formats for sequence-overlap
+reads of transcriptomes which have been assembled into transcipts by
+computational methods. Additional backgound about the TSA section of GenBank
+can be found at:
+
+    http://www.ncbi.nlm.nih.gov/genbank/tsa
+
+Data files for each TSA project are grouped by a stable 4-letter TSA
+Project Code. For example: GACR
+
+Available data files for each TSA project may include:
+
+    tsa.XXXX.##.gbff.gz     RNA GenBank flatfiles
+    tsa.XXXX.##.fsa_nt.gz   RNA FASTA files
+
+    tsa.XXXX.##.gnp.gz      Protein GenPept flatfiles
+    tsa.XXXX.##.fsa_aa.gz   Protein FASTA files
+
+    tsa.XXXX.mstr.gbff.gz   TSA master-record GenBank flatfile
+    stats.tsa.XXXX          Summary TSA statistics
+
+Where 'XXXX' represents a four-letter TSA Project Code, and '##' represents
+a serial file-number. Serial file numbers are used in the event that the
+data for a very large TSA project has to be split into a series of numbered
+files (as of this writing no TSA project is that large, and hence all serial
+numbers are '1').
+
+The available data files for the GACR TSA project at the NCBI FTP site as of
+March 2013 were:
+
+    stats.tsa.GACR
+    tsa.GACR.1.fsa_aa.gz
+    tsa.GACR.1.fsa_nt.gz
+    tsa.GACR.1.gbff.gz
+    tsa.GACR.mstr.gbff.gz
+
+Protein FASTA and GenPept files will only be available if the transcripts of
+a TSA project have been annotated with coding region features.
+
+More information about TSA master records is included below.
+
+The TSA statistics files provide a summary of each TSA project's status.
+Data included are: project code, assembly-version number, total number of
+transcripts in the project, total number of basepairs, and the lengths
+of the largest and smallest transcripts.
+		
+All TSA data files have been compressed using the gzip compression utility,
+and hence have a ".gz" filename suffix.
+
+TSA processing starts after the non-WGS GenBank Incremental Update and WGS
+processing have completed, and TSA files are usually available by 4:30am ET.
+The recommended time to look for and transfer new TSA data from the NCBI FTP
+site is 5:00am ET.
+
+But be aware that the bulk nature of TSA and WGS projects can sometimes
+require more processing time and delay file availability, particularly when
+multiple very large projects have to be provided on one day.
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+TSA 'master-record' GenBank flatfiles:
+
+TSA projects have an associated TSA master-record which summarizes the
+overall content of a project. Here is a link to the master for project GACR
+(Ips typographus):
+
+     http://www.ncbi.nlm.nih.gov/nuccore/GACR00000000
+
+And here is an excerpt from that master record:
+
+LOCUS       GACR01000000           14689 rc    mRNA    linear   TSA 05-MAR-2013
+DEFINITION  TSA: Ips typographus, transcriptome shotgun assembly.
+ACCESSION   GACR00000000
+VERSION     GACR00000000.1  GI:459277393
+DBLINK      BioProject: PRJNA178930
+            Sequence Read Archive: ERR169822, ERR169829
+KEYWORDS    TSA; Transcriptome Shotgun Assembly.
+SOURCE      Ips typographus
+....
+COMMENT     The Ips typographus transcriptome shotgun assembly (TSA) project
+            has the project accession GACR00000000.  This version of the
+            project (01) has the accession number GACR01000000, and consists of
+            sequences GACR01000001-GACR01014689.
+            
+            ##Assembly-Data-START##
+            Assembly Method       :: SeqMan Ngen 2.0.1 build 2
+            Sequencing Technology :: 454; Illumina
+            ##Assembly-Data-END##
+FEATURES             Location/Qualifiers
+     source          1..14689
+                     /organism="Ips typographus"
+                     /mol_type="mRNA"
+                     /db_xref="taxon:55986"
+TSA         GACR01000001-GACR01014689
+//
+
+This flatfile representation of the GACR TSA-master does *not* conform to
+the requirements of 'normal' GenBank flatfiles. For example:
+
+- It has neither sequence data nor a CONTIG join() statement.
+
+- The 'rc' (record count) value on the LOCUS line represents the
+  number of transcripts in the project, rather than a basepair count.
+
+- Undocumented linetype 'TSA' exists, to provide the range of accession
+  numbers for the 14,689 transcripts in the project. 
+
+Nonetheless, a TSA master-record has utility because it provides an
+overview of the important characteristics of a TSA project, in a simple
+and concise way.
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+Daily TSA Project-Lists:
+
+Companion TSA Project-Lists that may help facilitate the processing of TSA data
+are also provided.
+
+Project-Lists utilize a file-naming convention of:
+
+    tsa.proj_list.YYYY.MMDD
+	
+where 'YYYY' represents a 4-digit year, and 'MMDD' respresents a two-digit
+month and two-digit day. For example:
+
+    tsa.proj_list.2013.0307
+
+For every day on which new TSA data files are installed in the TSA FTP area,
+a Project-List is provided that briefly describes the circumstances of the
+processing which required that installation.
+
+Each line of a Project-List contains three fields, delimited by vertical
+bars:
+
+    Project-Action
+    TSA Project Code
+    Assembly-Version
+
+For example, the Project-List for March 13 2013 was named:
+
+    proj_list.2013.0313
+
+and this file contained:
+
+    new|GAGF|01
+    new|GABX|01
+
+There are four possible 'Project-Action' values:
+
+    new: used for new TSA projects, being installed in the TSA area for
+         the first time
+
+    reassembled: indicates that a TSA project has undergone a re-assembly
+
+    updated: indicates that new transcripts have been added to a TSA project,
+         or that one or more of the transcripts has been updated in some way;
+         however, the assembly-version for the project as a whole is unchanged
+
+    refreshed: indicates that all of the files for a TSA project have been
+         rebuilt and re-installed. This action might occur for a relatively
+         minor update that affects all the project contigs, such as a
+         publication update (in-press -> published). A project might also be
+         'refreshed' if it is found to contain contaminant transcripts.
+
+One possible use of the TSA Project-Lists is to prioritize processing of
+TSA data. Projects that are 'new' or 'reassembled' are almost certain to
+be of immediate interest to all users of TSA data. But 'updated' or
+'refreshed' projects might require a different approach, particularly if the
+project consists of millions of sequences.
+
+Note that the summary statistics file for each TSA project could be of
+some help in making prioritization decisions.
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+Other points of interest:
+
+When data for a TSA project are made available for any of the four
+Project-Actions described above, any existing files for that project are
+removed prior to the installation of new files.
+
+Only data for the most recent assembly-version of a TSA project is provided
+in the TSA FTP area.
+
+===============================================================================
+
+GenBank Livelists:
+
+	FTP Site:  ftp.ncbi.nih.gov
+	Directory: genbank/livelists
+	URL:       ftp://ftp.ncbi.nih.gov/genbank/livelists/
+
+This directory contains lists, generated weekly on Sunday evening at
+approximately 6:00pm EST/EDT, of all nucleotide and protein accession
+numbers for the sequences in GenBank. File names for these lists are
+of the form:
+
+	GbAccList.MMDD.YYYY.gz
+
+where MM represents a 2-digit value for the month, DD represents a 2-digit
+value for the day, and YYYY represents a four-digit value for the year.
+These files have been compressed with the gzip compression utility, hence
+the ".gz" suffix.
+
+Each line of these lists contains three comma-delimited values: accession
+number, sequence version number, and NCBI GI identifier. Protein accessions
+can be easily distinguished from nucleotide accessions because they have a
+three-letter prefix, followed by five digits. The remaining accessions are
+nucleotide accessions, in either a one-letter/five-digit format or a
+two-letter/six-digit format.
+
+Here's an example from the accession list for AF093062 and its protein
+translation AAC64372 :
+
+	AF093062,2,6019463
+	AAC64372,2,6019464
+
+In the GenBank flatfile representation of AF093062, these fields can be
+found on the VERSION line and in the /protein_id and /db_xref qualifiers of
+the coding region feature:
+
+LOCUS       AF093062     2795 bp    DNA             INV       12-OCT-1999
+DEFINITION  Leishmania major polyadenylate-binding protein 1 (PAB1) gene,
+            complete cds.
+ACCESSION   AF093062
+VERSION     AF093062.2  GI:6019463
+....
+     CDS             263..1945
+                     /gene="PAB1"
+                     /note="polyA-binding protein"
+                     /codon_start=1
+                     /product="polyadenylate-binding protein 1"
+                     /protein_id="AAC64372.2"
+                     /db_xref="GI:6019464"
+                     /translation="MAAAVQEAAAPVAHQPQMDKPIEIASIYVGDLDATINEPQ....
+
+In the ASN.1 representation of AF093062, these fields can be found within
+the Bioseq.id chain of the nucleotide and protein bioseqs:
+
+    seq {
+      id {
+        genbank {
+          name "AF093062" ,
+          accession "AF093062" ,
+          version 2 } ,
+        gi 6019463 } ,
+	....
+    seq {
+      id {
+        genbank {
+          accession "AAC64372" ,
+          version 2 } ,
+        gi 6019464 } ,
+
+===============================================================================
+
+Archive of GenBank Release Notes:
+
+	FTP Site:  ftp.ncbi.nih.gov
+	Directory: genbank/release.notes
+	URL:       ftp://ftp.ncbi.nih.gov/genbank/release.notes/
+
+This subdirectory contains the release notes for prior GenBank Releases,
+back to GenBank 74.0 (December 15, 1992). File names for these old release
+notes are of the form:
+
+	gbNNN.release.notes
+
+where NNN represents a release number. For example:
+
+	gb74.release.notes
+	gb113.release.notes
+
+===============================================================================
+
+If you have any questions, please contact:
+
+	National Center for Biotechnology Information
+	National Library of Medicine, 38A, 8N805
+	8600 Rockville Pike
+	Bethesda, MD  20894
+	USA
+	Voice:   (301) 496-2475
+	Fax:     (301) 480-9241
+
+NCBI's electronic mail address is:     info@ncbi.nlm.nih.gov

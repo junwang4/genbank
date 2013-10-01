@@ -1,0 +1,9 @@
+genbank.conf
+tmp
+
+python
+
+#data
+data/ftp-index.*
+data/ann_gz
+data/csv
