@@ -6,6 +6,7 @@ $mysqli = connect_database();
 $task_create_all_tables = 1; 
 $task_load_csv_files_to_database = 2; 
 
+$task = $task_create_all_tables;
 $task = $task_load_csv_files_to_database;
 
 if ($task == $task_create_all_tables) 
@@ -53,6 +54,7 @@ function load_csv_files($mysqli)
 function create_all_tables($mysqli)
 {
     $tables = array('Reference', 'Annotation', 'AnnotationReference', 'Keywords', 'Source', 'Comment', 'Organism', 'Dblink');
+    $tables = array('AnnotationReference');
     foreach ($tables as $table) {
         create_table($mysqli, $table);
     }
@@ -99,7 +101,11 @@ function create_table($mysqli, $table)
             keyId BIGINT,
             gi BIGINT,
             referenceId BIGINT,
-            PRIMARY KEY (keyId)
+            PRIMARY KEY (keyId),
+            INDEX (gi),
+            INDEX (referenceId),
+            FOREIGN KEY (gi) REFERENCES Annotation(gi),
+            FOREIGN KEY (referenceId) REFERENCES Reference(id)
         )";
     }
     else if ($table == "Keywords") {
