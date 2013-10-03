@@ -40,7 +40,8 @@ function load_csv_files($mysqli)
             $null_clause = "(id, reference, @authors, @consortium, title, journal, @pubmed, @remark) SET authors = nullif(@authors,''), consortium = nullif(@consortium,''), pubmed = nullif(@pubmed,''), remark = nullif(@remark,'')";
         }
 
-        $sql = "LOAD DATA LOCAL INFILE '$csv_dir/" . strtoupper($table) . ".csv' INTO TABLE genbank.$table FIELDS TERMINATED BY '|' ENCLOSED BY '\"' " . $null_clause ; 
+        $csv_fpath = $csv_dir . "/" . (($table == "AnnotationReference") ? "ANNOTATION_REFERENCE" : strtoupper($table)) . ".csv";
+        $sql = "LOAD DATA LOCAL INFILE '$csv_fpath' INTO TABLE genbank.$table FIELDS TERMINATED BY '|' ENCLOSED BY '\"' " . $null_clause ; 
 
         print("$sql\n");
         $mysqli->query($sql);
