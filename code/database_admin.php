@@ -5,9 +5,12 @@ $mysqli = connect_database();
 
 $task_create_all_tables = 1; 
 $task_load_csv_files_to_database = 2; 
+$task_add_indexes_to_tables = 3; 
 
 $task = $task_create_all_tables;
 $task = $task_load_csv_files_to_database;
+$task = $task_add_indexes_to_tables;
+
 
 if ($task == $task_create_all_tables) 
 {
@@ -16,6 +19,10 @@ if ($task == $task_create_all_tables)
 elseif ($task == $task_load_csv_files_to_database)
 {
     load_csv_files($mysqli);
+}
+elseif ($task == $task_add_indexes_to_tables)
+{
+    add_indexes_to_tables($mysqli);
 }
 else
     print "wrong task\n";
@@ -51,6 +58,21 @@ function load_csv_files($mysqli)
 
 
 // -----------------------------------------------
+function add_indexes_to_tables($mysqli)
+{
+    $table_indexes = array("table" => "Annotation", "indexes" => array("keywordsId", "sourceId", "organismId", "commentId", "dblinkId", "accession", "definition"));
+    $table_indexes = array("table" => "Reference", "indexes" => array("reference", "authors", "consortium", "title", "journal", "pubmed"));
+
+    foreach ($table_indexes["indexes"] as $index)
+    {
+        $sql = "CREATE INDEX " . $index . " ON " . $table_indexes["table"] . " (" . $index . ")";
+        print "$sql\n";
+        $mysqli->query($sql);
+    }
+}
+
+
+// -----------------------------------------------
 function create_all_tables($mysqli)
 {
     $tables = array('Reference', 'Annotation', 'AnnotationReference', 'Keywords', 'Source', 'Comment', 'Organism', 'Dblink');
@@ -76,6 +98,12 @@ function create_table($mysqli, $table)
             journal VARCHAR(5000),
             pubmed VARCHAR(50),
             remark VARCHAR(1000),
+            INDEX (reference),
+            INDEX (authors),
+            INDEX (consortium),
+            INDEX (title),
+            INDEX (journal),
+            INDEX (pubmed),
             PRIMARY KEY (id)
         )";
     } 
@@ -92,6 +120,13 @@ function create_table($mysqli, $table)
             accession VARCHAR(50),
             definition VARCHAR(500),
             segment VARCHAR(50),
+            INDEX (keywordsId),
+            INDEX (sourceId),
+            INDEX (organismId),
+            INDEX (commentId),
+            INDEX (dblinkId),
+            INDEX (accession),
+            INDEX (definition),
             PRIMARY KEY (gi)
         )";
     }
