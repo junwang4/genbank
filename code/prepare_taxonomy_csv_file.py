@@ -48,7 +48,18 @@ def gen_taxonomy_csv_files():
             if debug and cnt > 100: break
         open(file_csv_nodes, 'w').write("\n".join(out))
 
-    write_csv_for_nodes()
+    def write_csv_for_divisions():
+        file_dmp = "%s/division.dmp" % folder_taxonomy
+        file_csv = "%s/TAXDIVISION.csv" % folder_csv
+        out = []
+        for line in open(file_dmp, 'r').readlines():
+            row = line.replace("\t", "")[:-2]
+            out.append(row)
+        open(file_csv, 'w').write("\n".join(out))
+
+    #write_csv_for_nodes()
+
+    write_csv_for_divisions()
 
 if __name__ == "__main__":
     gen_taxonomy_csv_files()

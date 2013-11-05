@@ -43,6 +43,7 @@ function load_csv_files($mysqli)
     $tables = array('Reference', 'Annotation', 'AnnotationReference', 'Keywords', 'Source', 'Comment', 'Organism', 'Dblink');
     $tables = array('Reference');
     $tables = array('taxNode');
+    $tables = array('taxDivision');
     foreach ($tables as $table)
     {
         $null_clause = "";
@@ -95,8 +96,8 @@ function create_all_tables($mysqli)
 
 function create_taxonomy_tables($mysqli)
 {
-    $tables = array('taxName', 'taxNode');
     $tables = array('taxNode');
+    $tables = array('taxDivision');
     foreach ($tables as $table) {
         create_table($mysqli, $table);
     }
@@ -237,6 +238,16 @@ function create_table($mysqli, $table)
             INDEX (division_id),
             INDEX (genetic_code_id),
             INDEX (mitochondrial_genetic_code_id)
+        )";
+    }
+    else if ($table == "taxDivision") {
+        $sql = "CREATE TABLE IF NOT EXISTS " . $table . " (
+            id INT,
+            code CHAR(3),
+            name VARCHAR(200),
+            comments VARCHAR(1000),
+            INDEX (code),
+            PRIMARY KEY(id)
         )";
     }
     
