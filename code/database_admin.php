@@ -42,7 +42,7 @@ function load_csv_files($mysqli)
 
     $tables = array('Reference', 'Annotation', 'AnnotationReference', 'Keywords', 'Source', 'Comment', 'Organism', 'Dblink');
     $tables = array('Reference');
-    $tables = array('taxName', 'taxNode');
+    $tables = array('taxNode');
     foreach ($tables as $table)
     {
         $null_clause = "";
@@ -53,6 +53,10 @@ function load_csv_files($mysqli)
         elseif ($table == "Reference")
         {
             $null_clause = "(id, reference, @authors, @consortium, title, journal, @pubmed, @remark) SET authors = nullif(@authors,''), consortium = nullif(@consortium,''), pubmed = nullif(@pubmed,''), remark = nullif(@remark,'')";
+        }
+        elseif ($table == "taxNode")
+        {
+            $null_clause = "(id, name, parent_id, parent_name, @rank, @locus_prefix, division_id, inherited_div_flag, genetic_code_id, inherited_GC_flag, mitochondrial_genetic_code_id, inherited_MGC_flag, GenBank_hidden_flag, hidden_subtree_root_flag, @comments) SET rank = nullif(@rank,''), locus_prefix = nullif(@locus_prefix,''), comments = nullif(@comments,'')";
         }
 
         $csv_fpath = $csv_dir . "/" . (($table == "AnnotationReference") ? "ANNOTATION_REFERENCE" : strtoupper($table)) . ".csv";
@@ -92,6 +96,7 @@ function create_all_tables($mysqli)
 function create_taxonomy_tables($mysqli)
 {
     $tables = array('taxName', 'taxNode');
+    $tables = array('taxNode');
     foreach ($tables as $table) {
         create_table($mysqli, $table);
     }
@@ -197,7 +202,7 @@ function create_table($mysqli, $table)
     }
 
     // taxonomy
-    else if ($table == "taxName") {
+    /*else if ($table == "taxName") {
         $sql = "CREATE TABLE IF NOT EXISTS " . $table . " (
             tax_id INT,
             name VARCHAR(200),
@@ -205,10 +210,13 @@ function create_table($mysqli, $table)
             PRIMARY KEY(tax_id)
         )";
     }
+     */
     else if ($table == "taxNode") {
         $sql = "CREATE TABLE IF NOT EXISTS " . $table . " (
-            tax_id INT,
-            parent_tax_id INT,
+            id INT,
+            name VARCHAR(200),
+            parent_id INT,
+            parent_name VARCHAR(200),
             rank VARCHAR(100),
             locus_prefix CHAR(2),
             division_id INT,
@@ -220,14 +228,16 @@ function create_table($mysqli, $table)
             GenBank_hidden_flag INT,
             hidden_subtree_root_flag INT,
             comments VARCHAR(1000),
-            INDEX (tax_id),
-            INDEX (parent_tax_id),
-            INDEX (rank)
+            PRIMARY KEY(id),
+            INDEX (name),
+            INDEX (parent_id),
+            INDEX (parent_name),
+            INDEX (rank),
+            INDEX (locus_prefix),
+            INDEX (division_id),
+            INDEX (genetic_code_id),
+            INDEX (mitochondrial_genetic_code_id)
         )";
-            //keyId INT,
-            //PRIMARY KEY(keyId),
-            //FOREIGN KEY (tax_id) REFERENCES taxName(tax_id),
-            //FOREIGN KEY (parent_tax_id) REFERENCES taxName(tax_id),
     }
     
 
