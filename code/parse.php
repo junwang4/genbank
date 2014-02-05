@@ -59,8 +59,8 @@ function parse_all_files()
 function unzip_file($fname_ann)
 {
     global $Conf;
-
     $fpath_gz =  $Conf["annotation_gz_dir"] . "/$fname_ann.gz";
+
     if (! file_exists($fpath_gz)) 
     {
         throw new Exception("Annotation file not existing: \"$fpath_gz\"");
@@ -81,13 +81,13 @@ function parse($fname_ann)
 {
     global $Conf;
 
-    $keys_annotation = array(LOCUS, DEFINITION, ACCESSION, VERSION, GI, KEYWORDS, SEGMENT, DBLINK, SOURCE, ORGANISM, COMMENT);
+    $keys_annotation = array(LOCUS, DEFINITION, ACCESSION, VERSION, GI, KEYWORDS, SEGMENT, DBLINK, SOURCE, ORGANISM, COMMENT, 'locus_name', 'locus_sequence_length', 'locus_sequence_strands', 'locus_nucleic_acid_type', 'locus_linear_circular', 'locus_division_code', 'locus_date');
     $keys_reference = array(REFERENCE, AUTHORS, CONSRTM, TITLE, JOURNAL, PUBMED, REMARK);
 
-    $fpath_ann =  $Conf["tmp_dir"] . "/$fname_ann";
+    $fpath_ann = $Conf["tmp_dir"] . "/$fname_ann";
     if (! file_exists($fpath_ann)) 
     {
-        unzip_file($Conf["annotation_gz_dir"], $fname_ann);
+        unzip_file($fname_ann);
     }
 
     print("parsing: $fpath_ann\n");
@@ -148,13 +148,13 @@ function parse($fname_ann)
 65-67      The division code
 69-79      Date
  */
-                $locus_name = trim(substr($line, 13, 16));
-                $locus_sequence_length = trim(substr($line, 30, 11));
-                $locus_sequence_strands = trim(substr($line, 45, 3));
-                $locus_nucleic_acid_type = trim(substr($line, 48, 6));
-                $locus_linear_circular = trim(substr($line, 56, 8));
-                $locus_division_code = trim(substr($line, 65, 3));
-                $locus_date = trim(substr($line, 69, 11));
+                $ann["locus_name"] = trim(substr($line, 13-1, 16));
+                $ann["locus_sequence_length"] = trim(substr($line, 30-1, 11));
+                $ann["locus_sequence_strands"] = trim(substr($line, 45-1, 3));
+                $ann["locus_nucleic_acid_type"] = trim(substr($line, 48-1, 6));
+                $ann["locus_linear_circular"] = trim(substr($line, 56-1, 8));
+                $ann["locus_division_code"] = trim(substr($line, 65-1, 3));
+                $ann["locus_date"] = trim(substr($line, 69-1, 11));
             }
 
         }
@@ -234,7 +234,9 @@ function save_annotation_table($ann)
     global $Fhandles;
     fputcsv($Fhandles[ANNOTATION], array(
         $ann[GI], $ann[VERSION], $ann[KEYWORDS], $ann[SOURCE], $ann[ORGANISM], $ann[COMMENT], $ann[DBLINK],
-        $ann[LOCUS], $ann[ACCESSION], $ann[DEFINITION], $ann[SEGMENT]
+        $ann[LOCUS], $ann[ACCESSION], $ann[DEFINITION], $ann[SEGMENT],
+        $ann["locus_name"], $ann["locus_sequence_length"], $ann["locus_sequence_strands"], $ann["locus_nucleic_acid_type"],
+        $ann["locus_linear_circular"], $ann["locus_division_code"], $ann["locus_date"]
     ), CSV_FIELD_SEPARATOR);
 }
 
