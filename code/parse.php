@@ -3,8 +3,8 @@ ini_set('memory_limit', '-1');
 
 include './helper.php';
 
-$debug = false;
 $debug = true;
+$debug = false;
 
 if ($debug)
 {
@@ -136,6 +136,27 @@ function parse($fname_ann)
                 else
                     $ann[$key] = $val;
             }
+
+            if ($key == LOCUS)
+            {
+/*
+13-28      Locus name
+30-40      Length of sequence
+45-47      spaces, ss- (single-stranded)
+48-53      NA, DNA, RNA, tRNA
+56-63      'linear'
+65-67      The division code
+69-79      Date
+ */
+                $locus_name = trim(substr($line, 13, 16));
+                $locus_sequence_length = trim(substr($line, 30, 11));
+                $locus_sequence_strands = trim(substr($line, 45, 3));
+                $locus_nucleic_acid_type = trim(substr($line, 48, 6));
+                $locus_linear_circular = trim(substr($line, 56, 8));
+                $locus_division_code = trim(substr($line, 65, 3));
+                $locus_date = trim(substr($line, 69, 11));
+            }
+
         }
 
         if (in_array($key, $keys_reference))

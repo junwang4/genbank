@@ -12,6 +12,7 @@ $task = $task_create_all_tables;
 $task = $task_add_indexes_to_tables;
 $task = $task_create_taxonomy_tables;
 $task = $task_load_csv_files_to_database;
+$task = $task_add_locus_detailed_fields_to_Annotation;
 
 
 if ($task == $task_create_all_tables) 
@@ -30,11 +31,54 @@ elseif ($task == $task_create_taxonomy_tables)
 {
     create_taxonomy_tables($mysqli);
 }
+elseif ($task == $task_add_locus_detailed_fields_to_Annotation)
+{
+    add_locus_detailed_fields_to_Annotation($mysqli);
+}
 else
     print "wrong task\n";
 
 
 // -----------------------------------------------
+function add_locus_detailed_fields_to_Annotation($mysqli)
+{
+
+    $field_datatype = array(
+        'locus_name' => "CHAR(16)", 
+        'locus_sequence_length' => "INT",
+        'locus_sequence_strands' => "CHAR(3)",
+        'locus_nucleic_acid_type' => "CHAR(6)", 
+        'locus_linear_circular' => "CHAR(8)", 
+        'locus_division_code' => "CHAR(3)", 
+        'locus_date' => "DATE"
+    ); 
+       
+    $is_drop_fields_only = true;
+    $is_drop_fields_only = false;
+    if ($is_drop_fields_only)
+    {
+        foreach ($field_datatype as $field => $datatype )
+        {
+            $sql = "ALTER TABLE Annotation DROP $field";
+            print "$sql\n";
+            if (! $mysqli->query($sql) ) {
+                print "  - FAILED\n\n";
+            }
+        }
+        return;
+    }
+
+    foreach ($field_datatype as $field => $datatype )
+    {
+        $sql = "ALTER TABLE Annotation ADD $field $datatype, ADD INDEX ($field)";
+        print "$sql\n";
+        if (! $mysqli->query($sql) ) {
+            print "  - FAILED\n\n";
+        }
+    }
+}
+
+
 function load_csv_files($mysqli)
 {
     $conf = read_config();
