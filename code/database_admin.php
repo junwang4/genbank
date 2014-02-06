@@ -8,11 +8,11 @@ $task_create_taxonomy_tables = 11;
 $task_load_csv_files_to_database = 2; 
 $task_add_indexes_to_tables = 3; 
 
-$task = $task_create_all_tables;
-$task = $task_add_indexes_to_tables;
+#$task = $task_add_locus_detailed_fields_to_Annotation;
+#$task = $task_add_indexes_to_tables;
 $task = $task_create_taxonomy_tables;
+$task = $task_create_all_tables;
 $task = $task_load_csv_files_to_database;
-$task = $task_add_locus_detailed_fields_to_Annotation;
 
 
 if ($task == $task_create_all_tables) 
@@ -84,16 +84,16 @@ function load_csv_files($mysqli)
     $conf = read_config();
     $csv_dir = $conf["csv_dir"];
 
-    $tables = array('Reference', 'Annotation', 'AnnotationReference', 'Keywords', 'Source', 'Comment', 'Organism', 'Dblink');
     $tables = array('Reference');
     $tables = array('taxNode');
     $tables = array('taxDivision');
+    $tables = array('Reference', 'Annotation', 'AnnotationReference', 'Keywords', 'Source', 'Comment', 'Organism', 'Dblink');
     foreach ($tables as $table)
     {
         $null_clause = "";
         if ($table == "Annotation")
         {
-            $null_clause = "(gi, version, @keywordsId, sourceId, organismId, @commentId, @dblinkId, locus, accession, definition, @segment) SET keywordsId = nullif(@keywordsId,''), commentId = nullif(@commentId,''), dblinkId = nullif(@dblinkId,''), segment = nullif(@segment,'')";
+            $null_clause = "(gi, version, @keywordsId, sourceId, organismId, @commentId, @dblinkId, locus, accession, definition, @segment, locus_name, locus_sequence_length, @locus_sequence_strands, locus_nucleic_acid_type, locus_linear_circular, locus_division_code, @locus_date) SET keywordsId = nullif(@keywordsId,''), commentId = nullif(@commentId,''), dblinkId = nullif(@dblinkId,''), segment = nullif(@segment,''), locus_sequence_strands = nullif(@locus_sequence_strands,''), locus_date = STR_TO_DATE(@locus_date, '%d-%b-%Y')";
         }
         elseif ($table == "Reference")
         {
@@ -108,7 +108,10 @@ function load_csv_files($mysqli)
         $sql = "LOAD DATA LOCAL INFILE '$csv_fpath' INTO TABLE genbank.$table FIELDS TERMINATED BY '|' ENCLOSED BY '\"' " . $null_clause ; 
 
         print("$sql\n");
-        $mysqli->query($sql);
+        if (! $mysqli->query($sql) ) 
+        {
+            print "     FAILED\n\n";
+        }
     }
 }
 
@@ -131,8 +134,9 @@ function add_indexes_to_tables($mysqli)
 // -----------------------------------------------
 function create_all_tables($mysqli)
 {
-    $tables = array('Reference', 'Annotation', 'AnnotationReference', 'Keywords', 'Source', 'Comment', 'Organism', 'Dblink');
     $tables = array('AnnotationReference');
+    $tables = array('Reference', 'Annotation', 'AnnotationReference', 'Keywords', 'Source', 'Comment', 'Organism', 'Dblink');
+    $tables = array('Annotation');
     foreach ($tables as $table) {
         create_table($mysqli, $table);
     }
@@ -149,8 +153,14 @@ function create_taxonomy_tables($mysqli)
 
 function create_table($mysqli, $table) 
 {
-    $sql = "DROP TABLE IF EXISTS " . $table;
+    $sql = "SET foreign_key_checks = 0";
     $mysqli->query($sql);
+
+    $sql = "DROP TABLE IF EXISTS " . $table;
+    if (! $mysqli->query($sql)) 
+    {
+        print " - FALIED: $sql\n\n";
+    }
 
     if ($table == "Reference") {
         $sql = "CREATE TABLE IF NOT EXISTS " . $table . " (
@@ -184,6 +194,13 @@ function create_table($mysqli, $table)
             accession VARCHAR(50),
             definition VARCHAR(500),
             segment VARCHAR(50),
+            locus_name CHAR(16), 
+            locus_sequence_length INT,
+            locus_sequence_strands CHAR(3),
+            locus_nucleic_acid_type CHAR(6), 
+            locus_linear_circular CHAR(8), 
+            locus_division_code CHAR(3), 
+            locus_date DATE,
             INDEX (keywordsId),
             INDEX (sourceId),
             INDEX (organismId),
@@ -194,6 +211,13 @@ function create_table($mysqli, $table)
             INDEX (locus),
             INDEX (segment),
             INDEX (version),
+            INDEX (locus_name),
+            INDEX (locus_sequence_length),
+            INDEX (locus_sequence_strands),
+            INDEX (locus_nucleic_acid_type),
+            INDEX (locus_linear_circular),
+            INDEX (locus_division_code),
+            INDEX (locus_date),
             PRIMARY KEY (gi)
         )";
     }
@@ -214,6 +238,7 @@ function create_table($mysqli, $table)
         $sql = "CREATE TABLE IF NOT EXISTS " . $table . " (
             id INT,
             content VARCHAR(5000),
+            INDEX (content),
             PRIMARY KEY(id)
         )";
     }
@@ -221,6 +246,7 @@ function create_table($mysqli, $table)
         $sql = "CREATE TABLE IF NOT EXISTS " . $table . " (
             id INT,
             content VARCHAR(5000),
+            INDEX (content),
             PRIMARY KEY(id)
         )";
     }
@@ -228,6 +254,7 @@ function create_table($mysqli, $table)
         $sql = "CREATE TABLE IF NOT EXISTS " . $table . " (
             id INT,
             content VARCHAR(5000),
+            INDEX (content),
             PRIMARY KEY(id)
         )";
     }
@@ -291,16 +318,21 @@ function create_table($mysqli, $table)
             name VARCHAR(200),
             comments VARCHAR(1000),
             INDEX (code),
+            INDEX (name),
             PRIMARY KEY(id)
         )";
     }
     
 
-    if ($mysqli->query($sql) === TRUE) {
-        echo "Table \"" . $table . "\" successfully created.\n";
-    } else {
+    if (! $mysqli->query($sql))
+    {
         echo "Failed to create Table \"" . $table . "\".\n";
+    } else {
+        echo "Table \"" . $table . "\" successfully created.\n";
     }
+
+    $sql = "SET foreign_key_checks = 1";
+    $mysqli->query($sql);
 }
 
 
