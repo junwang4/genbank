@@ -22,6 +22,15 @@ define("JOURNAL", "JOURNAL");
 define("PUBMED", "PUBMED");
 define("REMARK", "REMARK");
 
+define("ANNOTATION", "ANNOTATION");
+define("REFERENCE", "REFERENCE");
+define("ANNOTATION_REFERENCE", "ANNOTATION_REFERENCE");
+define("COMMENT", "COMMENT");
+define("KEYWORDS", "KEYWORDS");
+define("ORGANISM", "ORGANISM");
+define("SOURCE", "SOURCE");
+define("DBLINK", "DBLINK");
+
 
 function connect_database() 
 {
