@@ -49,3 +49,18 @@ function read_config()
     }
     return $conf;
 }
+
+function print_time($t0, $msg)
+{
+    $t1 = microtime(true);
+    echo sprintf("$msg %.5fs\n", ($t1 - $t0));
+}
+
+function generateRandomString($length = 10) {
+    $characters = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    $randomString = '';
+    for ($i = 0; $i < $length; $i++) {
+        $randomString .= $characters[rand(0, strlen($characters) - 1)];
+    }
+    return $randomString;
+}

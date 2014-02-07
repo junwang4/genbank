@@ -92,6 +92,10 @@ function parse($fname_ann)
 
     print("parsing: $fpath_ann\n");
 
+    $is_patent = strpos($fname_ann, "pat");
+
+    $t0 = microtime(true); 
+
     init_global_hashes();
 
     $ann = init_array($keys_annotation);
@@ -108,9 +112,11 @@ function parse($fname_ann)
         else
             $prev_key = $key;
 
-        if ($key == GENBANK_RECORD_SEP) {
-            save_reference($ref, $ann[GI], $refIds_in_one_record);
+        if ($key == GENBANK_RECORD_SEP) 
+        {
+            save_reference($ref, $ann[GI], $refIds_in_one_record, $is_patent);
             save_annotation($ann, $refIds_in_one_record);
+
 
             $ann = init_array($keys_annotation);
             $ref = init_array($keys_reference);
@@ -118,6 +124,7 @@ function parse($fname_ann)
 
             $records ++;
             if ($records >= MAX_RECORDS_IN_A_FILE_FOR_PARSING) break;
+            if ($records % 1000 == 0) print_time($t0, 'time used for processing '. $records);
         }
 
         if (in_array($key, $keys_annotation))
@@ -163,7 +170,7 @@ function parse($fname_ann)
         {
             if ($key == REFERENCE && $ref[REFERENCE])
             {
-                save_reference($ref, $ann[GI], $refIds_in_one_record);
+                save_reference($ref, $ann[GI], $refIds_in_one_record, $is_patent);
                 $ref = init_array($keys_reference);
             }
             if ($ref[$key]) {
@@ -177,7 +184,7 @@ function parse($fname_ann)
 }
 
 
-function save_reference($ref, $gi, &$refIds_in_one_record)
+function save_reference($ref, $gi, &$refIds_in_one_record, $is_patent)
 {
     global $Hash_Reference;
     if ($ref[PUBMED])
@@ -192,13 +199,21 @@ function save_reference($ref, $gi, &$refIds_in_one_record)
         $k = gen_hash_key($au . $ti . $jo);
     }
 
-    if (! array_key_exists($k, $Hash_Reference)) {
-        $Hash_Reference[$k] = ((int)$gi) * 1000 + sizeof($refIds_in_one_record) +1;
-        save_reference_table($ref, $Hash_Reference[$k]);
+    if ($is_patent)
+    { // every patent reference (in Journal) is unique
+        $rk = $gi*1000+1;
+        save_reference_table($ref, $rk);
+    } 
+    else 
+    { 
+        if (! array_key_exists($k, $Hash_Reference)) {
+            $Hash_Reference[$k] = ((int)$gi) * 1000 + sizeof($refIds_in_one_record) +1;
+            save_reference_table($ref, $rk);
+        } 
+        $rk = $Hash_Reference[$k];
     }
-    save_annotation_reference_table($gi, $Hash_Reference[$k]);
-
-    array_push($refIds_in_one_record, $Hash_Reference[$k]);
+    save_annotation_reference_table($gi, $rk);
+    array_push($refIds_in_one_record, $rk);
 }
 
 
