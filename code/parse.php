@@ -208,7 +208,7 @@ function save_reference($ref, $gi, &$refIds_in_one_record, $is_patent)
     { 
         if (! array_key_exists($k, $Hash_Reference)) {
             $Hash_Reference[$k] = ((int)$gi) * 1000 + sizeof($refIds_in_one_record) +1;
-            save_reference_table($ref, $rk);
+            save_reference_table($ref, $Hash_Reference[$k]);
         } 
         $rk = $Hash_Reference[$k];
     }
