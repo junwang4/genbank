@@ -7,12 +7,14 @@ $task_create_all_tables = 1;
 $task_create_taxonomy_tables = 11; 
 $task_load_csv_files_to_database = 2; 
 $task_add_indexes_to_tables = 3; 
+$task_split_patent_Reference = 14;
 
 #$task = $task_add_locus_detailed_fields_to_Annotation;
 #$task = $task_add_indexes_to_tables;
 $task = $task_create_taxonomy_tables;
 $task = $task_create_all_tables;
 $task = $task_load_csv_files_to_database;
+$task = $task_split_patent_Reference;
 
 
 if ($task == $task_create_all_tables) 
@@ -35,11 +37,33 @@ elseif ($task == $task_add_locus_detailed_fields_to_Annotation)
 {
     add_locus_detailed_fields_to_Annotation($mysqli);
 }
+elseif ($task == $task_split_patent_Reference) 
+{
+    split_patent_reference($mysqli);
+}
 else
     print "wrong task\n";
 
 
 // -----------------------------------------------
+function split_patent_reference($mysqli) 
+{
+    $sql = "CREATE TABLE Reference_backup LIKE Reference";
+    run_sql($sql, $mysqli);
+
+    $sql = "INSERT INTO Reference_backup SELECT * FROM Reference";
+    run_sql($sql, $mysqli);
+
+    $sql = "CREATE TABLE ReferencePatent LIKE Reference";
+    run_sql($sql, $mysqli);
+
+    $sql = "INSERT INTO ReferencePatent SELECT * FROM Reference WHERE journal LIKE 'Patent%'";
+    run_sql($sql, $mysqli);
+
+    $sql = "DELETE FROM Reference WHERE journal LIKE 'Patent%'";
+    run_sql($sql, $mysqli);
+}
+
 function add_locus_detailed_fields_to_Annotation($mysqli)
 {
 
@@ -84,10 +108,10 @@ function load_csv_files($mysqli)
     $conf = read_config();
     $csv_dir = $conf["csv_dir"];
 
-    $tables = array('Reference');
     $tables = array('taxNode');
     $tables = array('taxDivision');
     $tables = array('Reference', 'Annotation', 'AnnotationReference', 'Keywords', 'Source', 'Comment', 'Organism', 'Dblink');
+    $tables = array('Reference');
     foreach ($tables as $table)
     {
         $null_clause = "";
@@ -137,6 +161,7 @@ function create_all_tables($mysqli)
     $tables = array('AnnotationReference');
     $tables = array('Reference', 'Annotation', 'AnnotationReference', 'Keywords', 'Source', 'Comment', 'Organism', 'Dblink');
     $tables = array('Annotation');
+    $tables = array('Reference');
     foreach ($tables as $table) {
         create_table($mysqli, $table);
     }
@@ -335,5 +360,12 @@ function create_table($mysqli, $table)
     $mysqli->query($sql);
 }
 
+function run_sql($sql, $mysqli)
+{
+    print "$sql\n";
+    if (! $mysqli->query($sql) ) {
+        print "  - FAILED\n\n";
+    }
+}
 
 ?>
