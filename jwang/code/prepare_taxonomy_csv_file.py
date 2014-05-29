@@ -83,10 +83,16 @@ def generate_new_organism_csv():
         csvfile = open("%s/ORGANISM.csv" % csv_dir)
         out = []
         out_org_tax = []
+        already_processed = {}
         for row in csv.reader(csvfile, delimiter='|', quotechar='"'):
         #139189705|"marine metagenome    unclassified sequences; metagenomes; ecological metagenomes."
             organism_id, content = row
-            species, seq_order = content.split('\t')
+            try:
+                species, seq_order = content.split('\t',1)
+            except:
+                print "tab key wrong"
+                print content
+                return
             #print "%-30s %s" % (species, seq_order)
             species_id = name_id[species] if species in name_id else ''
             species_rank = id_rank[species_id] if species_id in id_rank else ''
@@ -105,6 +111,10 @@ def generate_new_organism_csv():
             items += tops
             items.append(content)
             if species_id != '':
+                if species_id in already_processed:
+                    continue
+                else:
+                    already_processed[species_id] = 1
                 out.append("|".join(items))
             out_org_tax.append("%s|%s" % (organism_id, species_id))
 
