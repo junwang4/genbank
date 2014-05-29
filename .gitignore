@@ -1,7 +1,6 @@
-genbank.conf
-tmp
+jwang/code/genbank.conf
+jwang/code/py.conf
 
-python
 
 #data
 data/ftp-index.*
@@ -10,4 +9,5 @@ data/csv
 data/tax*
 data/public*
 
-jwang/code/py.conf
+tmp
+python

@@ -1,17 +1,19 @@
 debug = True
 debug = False
 
-import ConfigParser
+import ConfigParser, csv, re
+
 config = ConfigParser.ConfigParser()
 config.read('py.conf')
 
 config_option = "DEPLOY"
 config_option = "TEST"
 
+csv_dir = config.get(config_option, 'csv_dir')
+taxonomy_dir = config.get(config_option, 'taxonomy_dir')
+print "csv_dir: %s\ntaxonomy_dir: %s\n" % (csv_dir, taxonomy_dir)
+
 def gen_taxonomy_csv_files(task):
-    csv_dir = config.get(config_option, 'csv_dir')
-    taxonomy_dir = config.get(config_option, 'taxonomy_dir')
-    print "csv_dir: %s\ntaxonomy_dir: %s\n" % (csv_dir, taxonomy_dir)
 
     def read_names():
         id_name = {}
@@ -62,10 +64,72 @@ def gen_taxonomy_csv_files(task):
     elif task == "create_TAXDIVISION_csv":
         write_csv_for_divisions()
 
-def analyze_taxonomy():
-    file_csv_nodes = "%s/TAXNODE.csv" % csv_dir
+def generate_new_organism_csv():
+    NUM_TOP_ANCIENTS = 3
+    id_parentId, id_name, id_rank, name_id = {}, {}, {}, {}
+    def read_taxonomy_csv():
+        csvfile = open("%s/TAXNODE.csv" % csv_dir)
+        for row in csv.reader(csvfile, delimiter='|'):
+        #2|Bacteria|131567|cellular organisms|superkingdom||0|0|11|0|0|0|0|0|
+            node_id, node_name, parent_id, parent_name, rank = row[:5]
+            id_name[node_id] = node_name
+            name_id[node_name] = node_id
+            id_parentId[node_id] = parent_id
+            id_rank[node_id] = rank
+        #return id_parentId, id_name, id_rank
+
+    def gen_new_organism_csv():
+        read_taxonomy_csv()
+        csvfile = open("%s/ORGANISM.csv" % csv_dir)
+        out = []
+        out_org_tax = []
+        for row in csv.reader(csvfile, delimiter='|', quotechar='"'):
+        #139189705|"marine metagenome    unclassified sequences; metagenomes; ecological metagenomes."
+            organism_id, content = row
+            species, seq_order = content.split('\t')
+            #print "%-30s %s" % (species, seq_order)
+            species_id = name_id[species] if species in name_id else ''
+            species_rank = id_rank[species_id] if species_id in id_rank else ''
+            items = [species_id, species, species_rank]
+            seq_order = re.sub('\s+', ' ', seq_order[:-1])
+            parents = seq_order.split('; ')
+            parent_size = 3
+            tops = [''] * NUM_TOP_ANCIENTS * parent_size
+            for i in range(min(NUM_TOP_ANCIENTS, len(parents))):
+                tops[i*parent_size+1] = parents[i]
+                if parents[i] in name_id:
+                    pid = name_id[parents[i]]
+                    tops[i*parent_size] = pid
+                    tops[i*parent_size+2] = id_rank[pid]
+
+            items += tops
+            items.append(content)
+            if species_id != '':
+                out.append("|".join(items))
+            out_org_tax.append("%s|%s" % (organism_id, species_id))
+
+        out_csvfile = "%s/ORGANISM_NEW.csv" % csv_dir
+        open(out_csvfile, 'w').write("\n".join(out))
+        out_orgtax_csvfile = "%s/ORGANISM_TAX.csv" % csv_dir
+        open(out_orgtax_csvfile, 'w').write("\n".join(out_org_tax))
+    
+    def list_hierarchy(id):
+        read_taxonomy_csv()
+        pid = id_parentId[id]
+        level = 0
+        while True:
+            level += 1
+            print "%3s %10s %40s    %20s" % (level, id, id_name[id], id_rank[id])
+            if id == '1':
+                break
+            id = pid
+            pid = id_parentId[id]
+
+    #list_hierarchy('9913')
+    #list_hierarchy('408172')
+    gen_new_organism_csv()
 
 if __name__ == "__main__":
     #gen_taxonomy_csv_files(task='create_TAXDIVISION_csv')
-    gen_taxonomy_csv_files(task='create_TAXNODE_csv')
-    #analyze_taxonomy()
+    #gen_taxonomy_csv_files(task='create_TAXNODE_csv')
+    generate_new_organism_csv()

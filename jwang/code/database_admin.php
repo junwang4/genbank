@@ -2,7 +2,6 @@
 include './helper.php';
 $mysqli = connect_database();
 
-
 $task_create_all_tables = 1; 
 $task_create_taxonomy_tables = 11; 
 $task_load_csv_files_to_database = 2; 
@@ -11,10 +10,10 @@ $task_split_patent_Reference = 14;
 
 #$task = $task_add_locus_detailed_fields_to_Annotation;
 #$task = $task_add_indexes_to_tables;
-$task = $task_create_taxonomy_tables;
 $task = $task_create_all_tables;
-$task = $task_load_csv_files_to_database;
 $task = $task_split_patent_Reference;
+$task = $task_create_taxonomy_tables;
+$task = $task_load_csv_files_to_database;
 
 
 if ($task == $task_create_all_tables) 
@@ -112,6 +111,7 @@ function load_csv_files($mysqli)
     $tables = array('taxDivision');
     $tables = array('Reference', 'Annotation', 'AnnotationReference', 'Keywords', 'Source', 'Comment', 'Organism', 'Dblink');
     $tables = array('Reference');
+    $tables = array('Organism_new', 'Organism_tax');
     foreach ($tables as $table)
     {
         $null_clause = "";
@@ -126,6 +126,14 @@ function load_csv_files($mysqli)
         elseif ($table == "taxNode")
         {
             $null_clause = "(id, name, parent_id, parent_name, @rank, @locus_prefix, division_id, inherited_div_flag, genetic_code_id, inherited_GC_flag, mitochondrial_genetic_code_id, inherited_MGC_flag, GenBank_hidden_flag, hidden_subtree_root_flag, @comments) SET rank = nullif(@rank,''), locus_prefix = nullif(@locus_prefix,''), comments = nullif(@comments,'')";
+        }
+        elseif ($table == "Organism_tax")
+        {
+            $null_clause = "(organism_id, @tax_id) SET tax_id = nullif(@tax_id,'')";
+        }
+        elseif ($table == "Organism_new")
+        {
+            $null_clause = "(tax_id, tax_name, tax_rank, @top1_tax_id, top1_tax_name, top1_tax_rank, @top2_tax_id, top2_tax_name, top2_tax_rank, @top3_tax_id, top3_tax_name, top3_tax_rank, content) SET top1_tax_id=nullif(@top1_tax_id,''),top2_tax_id=nullif(@top2_tax_id,''),top3_tax_id=nullif(@top3_tax_id,'')";   
         }
 
         $csv_fpath = $csv_dir . "/" . (($table == "AnnotationReference") ? "ANNOTATION_REFERENCE" : strtoupper($table)) . ".csv";
@@ -171,6 +179,7 @@ function create_taxonomy_tables($mysqli)
 {
     $tables = array('taxNode');
     $tables = array('taxDivision');
+    $tables = array('Organism_new', 'Organism_tax');
     foreach ($tables as $table) {
         create_table($mysqli, $table);
     }
@@ -345,6 +354,43 @@ function create_table($mysqli, $table)
             INDEX (code),
             INDEX (name),
             PRIMARY KEY(id)
+        )";
+    }
+    else if ($table == "Organism_new") {
+        $sql = "CREATE TABLE IF NOT EXISTS " . $table . " (
+            tax_id INT, 
+            tax_name VARCHAR(500),
+            tax_rank VARCHAR(100), 
+            top1_tax_id INT,
+            top1_tax_name VARCHAR(500),
+            top1_tax_rank VARCHAR(100), 
+            top2_tax_id INT,
+            top2_tax_name VARCHAR(500),
+            top2_tax_rank VARCHAR(100), 
+            top3_tax_id INT,
+            top3_tax_name VARCHAR(500),
+            top3_tax_rank VARCHAR(100),
+            content VARCHAR(5000),
+            INDEX (tax_name),
+            INDEX (tax_rank),
+            INDEX (top1_tax_id),
+            INDEX (top1_tax_name),
+            INDEX (top1_tax_rank),
+            INDEX (top2_tax_id),
+            INDEX (top2_tax_name),
+            INDEX (top2_tax_rank),
+            INDEX (top3_tax_id),
+            INDEX (top3_tax_name),
+            INDEX (top3_tax_rank),
+            PRIMARY KEY(tax_id)
+        )";
+    }
+    else if ($table == "Organism_tax") {
+        $sql = "CREATE TABLE IF NOT EXISTS " . $table . " (
+            organism_id INT,
+            tax_id INT,
+            INDEX (tax_id),
+            PRIMARY KEY(organism_id)
         )";
     }
     

@@ -30,7 +30,8 @@ function connect_database()
 {
     $conf = read_config();
     print_r($conf);
-    $mysqli = new mysqli($conf['host'], $conf['user'], $conf['password'], $conf['database']);
+    $mysqli = new mysqli($conf['host'], $conf['user'], $conf['password'], $conf['database'], '3306', $conf['mysql_sock']);
+    #print_r($mysqli);
     if ($mysqli->connect_errno) {
         echo "Failed to connect to MySQL: (" . $mysqli->connect_errno . ") " . $mysqli->connect_error;
         exit();
@@ -42,7 +43,6 @@ function connect_database()
 
 function read_config()
 {
-    #$fileConf = (gethostname() == "metadatalab.syr.edu" || gethostname() == "vdatalab.syr.edu") ? "remote.conf" : "local.conf";
     $fileConf = "genbank.conf";
     if (!($conf = parse_ini_file($fileConf))) {
         throw new Exception("\nConfiuration file not found: " . $fileConf);
