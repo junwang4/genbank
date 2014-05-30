@@ -7,13 +7,18 @@ $task_create_taxonomy_tables = 11;
 $task_load_csv_files_to_database = 2; 
 $task_add_indexes_to_tables = 3; 
 $task_split_patent_Reference = 14;
+$task_add_taxid_to_Annotation = 21;
+$task_update_taxid_to_Annotation = 22;
 
 #$task = $task_add_locus_detailed_fields_to_Annotation;
 #$task = $task_add_indexes_to_tables;
-$task = $task_create_all_tables;
 $task = $task_split_patent_Reference;
-$task = $task_create_taxonomy_tables;
+$task = $task_create_all_tables;
+
+$task = $task_add_taxid_to_Annotation;
 $task = $task_load_csv_files_to_database;
+$task = $task_create_taxonomy_tables;
+$task = $task_update_taxid_to_Annotation;
 
 
 if ($task == $task_create_all_tables) 
@@ -35,6 +40,14 @@ elseif ($task == $task_create_taxonomy_tables)
 elseif ($task == $task_add_locus_detailed_fields_to_Annotation)
 {
     add_locus_detailed_fields_to_Annotation($mysqli);
+}
+elseif ($task == $task_add_taxid_to_Annotation)
+{
+    add_taxid_to_Annotation($mysqli);
+}
+elseif ($task == $task_update_taxid_to_Annotation)
+{
+    update_taxid_to_Annotation($mysqli);
 }
 elseif ($task == $task_split_patent_Reference) 
 {
@@ -65,7 +78,6 @@ function split_patent_reference($mysqli)
 
 function add_locus_detailed_fields_to_Annotation($mysqli)
 {
-
     $field_datatype = array(
         'locus_name' => "CHAR(16)", 
         'locus_sequence_length' => "INT",
@@ -101,6 +113,51 @@ function add_locus_detailed_fields_to_Annotation($mysqli)
     }
 }
 
+function add_taxid_to_Annotation($mysqli)
+{
+    $field_datatype = array(
+        'tax_id' => "INT" 
+    );
+    foreach ($field_datatype as $field => $datatype )
+    {
+        $sql = "ALTER TABLE Annotation ADD $field $datatype, ADD INDEX ($field)";
+        print "$sql\n";
+        if (! $mysqli->query($sql) ) {
+            print "  - FAILED\n\n";
+        }
+    }
+}
+
+function update_taxid_to_Annotation($mysqli) 
+{
+    $sql = "SELECT * FROM Organism_tax";
+    $result = $mysqli->query($sql);
+    $cnt = 0;
+    $organism_tax = array();
+    while ($row = $result->fetch_object()) {
+        //print $row->organism_id . " -> " .  $row->tax_id . "\n";
+        $organism_tax[ $row->organism_id ] = $row->tax_id;
+        $cnt += 1;
+        //if ($cnt>10) break;
+    }
+
+    $cnt = 0;
+    $sql = "SELECT * FROM Annotation";
+    $result = $mysqli->query($sql);
+    while ($row = $result->fetch_object()) {
+        $gi = $row->gi;
+        $organismId = $row->organismId;
+        if ($organism_tax[$organismId] != NULL) {
+            $tax_id = $organism_tax[$organismId];
+            $q = "UPDATE Annotation SET tax_id = " . $tax_id . " WHERE gi = " . $gi;
+            if (! $mysqli->query($q) ) {
+                print "FAILED TO UPDATE / SET tax_id\n" . $q . "\n";
+            }
+            $cnt += 1;
+            //if ($cnt>10) break;
+        }
+    }
+}
 
 function load_csv_files($mysqli)
 {
@@ -110,6 +167,7 @@ function load_csv_files($mysqli)
     $tables = array('taxNode');
     $tables = array('taxDivision');
     $tables = array('Reference', 'Annotation', 'AnnotationReference', 'Keywords', 'Source', 'Comment', 'Organism', 'Dblink');
+    $tables = array('Annotation');
     $tables = array('Reference');
     $tables = array('Organism_new', 'Organism_tax');
     foreach ($tables as $table)
@@ -168,7 +226,6 @@ function create_all_tables($mysqli)
 {
     $tables = array('AnnotationReference');
     $tables = array('Reference', 'Annotation', 'AnnotationReference', 'Keywords', 'Source', 'Comment', 'Organism', 'Dblink');
-    $tables = array('Annotation');
     $tables = array('Reference');
     foreach ($tables as $table) {
         create_table($mysqli, $table);
