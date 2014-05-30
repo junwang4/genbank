@@ -137,7 +137,28 @@ def generate_new_organism_csv():
     #list_hierarchy('408172')
     gen_new_organism_csv()
 
+def update_annotation_csv_with_tax_id_column():
+#gi BIGINT, version INT, keywordsId INT, sourceId INT, organismId INT, commentId INT, dblinkId INT, locus VARCHAR(500),
+        organismId_taxId = {}
+        def read_organism_tax_map():
+            orgtax_csvfile = "%s/ORGANISM_TAX.csv" % csv_dir
+            for row in open(orgtax_csvfile).readlines():
+                organismId, tax_id = row.strip().split("|")
+                organismId_taxId[organismId] = tax_id
+
+        read_organism_tax_map()
+
+        csvfile = open("%s/ANNOTATION.csv" % csv_dir)
+        fout = open("%s/tmp_ANNOTATION.csv" % csv_dir, 'w')
+        for line in csvfile:
+            organismId = line.split('|')[4]
+            tax_id = organismId_taxId[organismId]
+            #print organismId, tax_id
+            fout.write("%s|%s\n" % (line.strip(), organismId_taxId[organismId]))
+
+
 if __name__ == "__main__":
     #gen_taxonomy_csv_files(task='create_TAXDIVISION_csv')
     #gen_taxonomy_csv_files(task='create_TAXNODE_csv')
-    generate_new_organism_csv()
+    #generate_new_organism_csv()
+    update_annotation_csv_with_tax_id_column()
