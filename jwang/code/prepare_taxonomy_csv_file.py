@@ -67,6 +67,7 @@ def gen_taxonomy_csv_files(task):
 def generate_new_organism_csv():
     NUM_TOP_ANCIENTS = 3
     id_parentId, id_name, id_rank, name_id = {}, {}, {}, {}
+
     def read_taxonomy_csv():
         csvfile = open("%s/TAXNODE.csv" % csv_dir)
         for row in csv.reader(csvfile, delimiter='|'):
@@ -110,11 +111,8 @@ def generate_new_organism_csv():
 
             items += tops
             items.append(content)
-            if species_id != '':
-                if species_id in already_processed:
-                    continue
-                else:
-                    already_processed[species_id] = 1
+            if species_id != '' and not species_id in already_processed:
+                already_processed[species_id] = 1
                 out.append("|".join(items))
             out_org_tax.append("%s|%s" % (organism_id, species_id))
 
