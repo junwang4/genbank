@@ -149,7 +149,7 @@ def update_annotation_csv_with_tax_id_column():
         read_organism_tax_map()
 
         csvfile = open("%s/ANNOTATION.csv" % csv_dir)
-        fout = open("%s/tmp_ANNOTATION.csv" % csv_dir, 'w')
+        fout = open("%s/ANNOTATION_tax_id.csv" % csv_dir, 'w')
         for line in csvfile:
             organismId = line.split('|')[4]
             tax_id = organismId_taxId[organismId]

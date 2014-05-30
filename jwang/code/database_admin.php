@@ -13,13 +13,14 @@ $task_update_taxid_to_Annotation = 22;
 
 $task = $task_add_locus_detailed_fields_to_Annotation;
 $task = $task_add_indexes_to_tables;
-$task = $task_split_patent_Reference;
-$task = $task_create_all_tables;
+#$task = $task_add_taxid_to_Annotation;    // too slow. Instead, add ANNOTATION.csv an addition column "tax_id" in prepare_taxonomy_csv_file.py
+#$task = $task_update_taxid_to_Annotation; // then reload ANNOTATION.csv to database
 
-$task = $task_add_taxid_to_Annotation;
-$task = $task_load_csv_files_to_database;
+$task = $task_split_patent_Reference;
 $task = $task_create_taxonomy_tables;
-$task = $task_update_taxid_to_Annotation;
+
+$task = $task_create_all_tables;
+$task = $task_load_csv_files_to_database;
 
 
 if ($task == $task_create_all_tables) 
@@ -168,15 +169,15 @@ function load_csv_files($mysqli)
     $tables = array('taxNode');
     $tables = array('taxDivision');
     $tables = array('Reference', 'Annotation', 'AnnotationReference', 'Keywords', 'Source', 'Comment', 'Organism', 'Dblink');
-    $tables = array('Annotation');
     $tables = array('Reference');
     $tables = array('Organism_new', 'Organism_tax');
+    $tables = array('Annotation');
     foreach ($tables as $table)
     {
         $null_clause = "";
         if ($table == "Annotation")
         {
-            $null_clause = "(gi, version, @keywordsId, sourceId, organismId, @commentId, @dblinkId, locus, accession, definition, @segment, locus_name, locus_sequence_length, @locus_sequence_strands, locus_nucleic_acid_type, locus_linear_circular, locus_division_code, @locus_date) SET keywordsId = nullif(@keywordsId,''), commentId = nullif(@commentId,''), dblinkId = nullif(@dblinkId,''), segment = nullif(@segment,''), locus_sequence_strands = nullif(@locus_sequence_strands,''), locus_date = STR_TO_DATE(@locus_date, '%d-%b-%Y')";
+            $null_clause = "(gi, version, @keywordsId, sourceId, organismId, @commentId, @dblinkId, locus, accession, definition, @segment, locus_name, locus_sequence_length, @locus_sequence_strands, locus_nucleic_acid_type, locus_linear_circular, locus_division_code, @locus_date, @tax_id) SET keywordsId = nullif(@keywordsId,''), commentId = nullif(@commentId,''), dblinkId = nullif(@dblinkId,''), segment = nullif(@segment,''), locus_sequence_strands = nullif(@locus_sequence_strands,''), locus_date = STR_TO_DATE(@locus_date, '%d-%b-%Y'), tax_id = nullif(@tax_id,'')";
         }
         elseif ($table == "Reference")
         {
@@ -195,7 +196,13 @@ function load_csv_files($mysqli)
             $null_clause = "(tax_id, tax_name, tax_rank, @top1_tax_id, top1_tax_name, top1_tax_rank, @top2_tax_id, top2_tax_name, top2_tax_rank, @top3_tax_id, top3_tax_name, top3_tax_rank, content) SET top1_tax_id=nullif(@top1_tax_id,''),top2_tax_id=nullif(@top2_tax_id,''),top3_tax_id=nullif(@top3_tax_id,'')";   
         }
 
-        $csv_fpath = $csv_dir . "/" . (($table == "AnnotationReference") ? "ANNOTATION_REFERENCE" : strtoupper($table)) . ".csv";
+        $filename = strtoupper($table); 
+        if ($table == "AnnotationReference") {
+            $filename = "ANNOTATION_REFERENCE";
+        } else if ($table == "Annotation") {
+            $filename = "ANNOTATION_tax_id";
+        }
+        $csv_fpath = $csv_dir . "/" . $filename . ".csv";
         $sql = "LOAD DATA LOCAL INFILE '$csv_fpath' INTO TABLE genbank.$table FIELDS TERMINATED BY '|' ENCLOSED BY '\"' " . $null_clause ; 
 
         print("$sql\n");
@@ -227,7 +234,7 @@ function create_all_tables($mysqli)
 {
     $tables = array('AnnotationReference');
     $tables = array('Reference', 'Annotation', 'AnnotationReference', 'Keywords', 'Source', 'Comment', 'Organism', 'Dblink');
-    $tables = array('Reference');
+    $tables = array('Annotation');
     foreach ($tables as $table) {
         create_table($mysqli, $table);
     }
@@ -293,6 +300,7 @@ function create_table($mysqli, $table)
             locus_linear_circular CHAR(8), 
             locus_division_code CHAR(3), 
             locus_date DATE,
+            tax_id INT,
             INDEX (keywordsId),
             INDEX (sourceId),
             INDEX (organismId),
@@ -310,6 +318,7 @@ function create_table($mysqli, $table)
             INDEX (locus_linear_circular),
             INDEX (locus_division_code),
             INDEX (locus_date),
+            INDEX (tax_id),
             PRIMARY KEY (gi)
         )";
     }
