@@ -6,12 +6,13 @@ $task_create_all_tables = 1;
 $task_create_taxonomy_tables = 11; 
 $task_load_csv_files_to_database = 2; 
 $task_add_indexes_to_tables = 3; 
+$task_add_locus_detailed_fields_to_Annotation = 5;
 $task_split_patent_Reference = 14;
 $task_add_taxid_to_Annotation = 21;
 $task_update_taxid_to_Annotation = 22;
 
-#$task = $task_add_locus_detailed_fields_to_Annotation;
-#$task = $task_add_indexes_to_tables;
+$task = $task_add_locus_detailed_fields_to_Annotation;
+$task = $task_add_indexes_to_tables;
 $task = $task_split_patent_Reference;
 $task = $task_create_all_tables;
 
