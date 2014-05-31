@@ -1,9 +1,11 @@
 This file is used to document what Jun has done.
 
-2014-05-29
+2014-05-30
 
 1. Added a column "tax_id" in table Annotation
 2. Added a new table: Organism_new (which contains taxonomy details for a tax_id in Annotation)
+
+fields in Organism_new: 
 
  tax_id
  tax_name
@@ -35,14 +37,9 @@ I may need to add three most specific ones too: bottom1_tax, bottom2_tax, bottom
 If you think they are useful, please let me know.
 
 
-===
+3. We no long need to use the column "organismId" in table Annotation. Instead, we will use "tax_id".
 
+For example, to get the taxonomy information for the annotation with GI=2, we can do this:
 
-We don't need to use the column "organismId" in table Annotation anymore.
-Instead, we will use "tax_id".
+SELECT a.gi, a.definition, o.* FROM Annotation as a, Organism_new as o WHERE a.tax_id = o.tax_id and a.gi=2;
 
-For example, to get the taxonomy information for an annotation with GI=2, we can do this:
-
-SELECT o.tax_name, o.rank, o.top1_tax_name, o.top1_tax_rank
-    FROM Annotation as a, Organism_new as o
-    WHWERE a.tax_id = o.tax_id and a.gi=2
