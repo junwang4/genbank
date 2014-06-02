@@ -1,6 +1,13 @@
 This file is used to document what Jun has done.
 
-2014-05-30
+== 2014-06-02 ==
+
+Just found that some organisms share the same name (853 such cases, out of over 1 million). For example, bacteria has two entries in table taxNode; one has the rank of superkingdom, and the other one the rank of genus. There are 853 such cases of name sharing.
+
+I need to fix it - it involves four tables (Annotation, taxNode, Organism_new, Organism_tax) and will take a while.
+
+
+== 2014-05-30 ==
 
 1. Added a column "tax_id" in table Annotation
 2. Added a new table: Organism_new (which contains taxonomy details for a tax_id in Annotation)
@@ -19,6 +26,15 @@ fields in Organism_new:
  top3_tax_id
  top3_tax_name
  top3_tax_rank
+ bottom1_tax_id
+ bottom1_tax_name
+ bottom1_tax_rank
+ bottom2_tax_id
+ bottom2_tax_name
+ bottom2_tax_rank
+ bottom3_tax_id
+ bottom3_tax_name
+ bottom3_tax_rank
  content 
 
 top1_tax is the taxonomy information for the "highest ancester" of the species given in the ORGANISM field of an annotation record. 
@@ -26,20 +42,19 @@ top1_tax is the taxonomy information for the "highest ancester" of the species g
 For example, here is the ORGANISM field of an annotation
 
  Danio rerio
- Eukaryota; Metazoa; Chordata; Craniata; Vertebrata; Euteleostomi;...
+ Eukaryota; Metazoa; Chordata; Craniata; Vertebrata; Euteleostomi; Actinopterygii; Neopterygii; Teleostei; Ostariophysi; Cypriniformes; Cyprinidae; Danio. 
 
 "Danio rerio" is the species name,
-its top1_tax is "Eukaryota"
-its top2_tax is "Metazoa"
-its top3_tax is "Chordata"
-
-I may need to add three most specific ones too: bottom1_tax, bottom2_tax, bottom3_tax.
-If you think they are useful, please let me know.
-
+    top1_tax_name : "Eukaryota"
+    top2_tax_name : "Metazoa"
+    top3_tax_name : "Chordata"
+    bottom1_tax_name : "Danio"
+    bottom2_tax_name : "Cyprinidae"
+    bottom3_tax_name : "Cypriniformes"
 
 3. We no long need to use the column "organismId" in table Annotation. Instead, we will use "tax_id".
 
 For example, to get the taxonomy information for the annotation with GI=2, we can do this:
 
-SELECT a.gi, a.definition, o.* FROM Annotation as a, Organism_new as o WHERE a.tax_id = o.tax_id and a.gi=2;
+SELECT a.gi, a.definition, o.* FROM Annotation as a, Organism_new as o WHERE a.tax_id = o.tax_id AND a.gi=2;
 
