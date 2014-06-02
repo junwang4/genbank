@@ -6,8 +6,7 @@ import ConfigParser, csv, re
 config = ConfigParser.ConfigParser()
 config.read('py.conf')
 
-config_option = "DEPLOY"
-config_option = "TEST"
+config_option = "DEFAULT"
 
 csv_dir = config.get(config_option, 'csv_dir')
 taxonomy_dir = config.get(config_option, 'taxonomy_dir')
@@ -65,7 +64,7 @@ def gen_taxonomy_csv_files(task):
         write_csv_for_divisions()
 
 def generate_new_organism_csv():
-    NUM_TOP_ANCIENTS = 3
+    NUM_TOP_BOTTOM_ANCIENTS = 3
     id_parentId, id_name, id_rank, name_id = {}, {}, {}, {}
 
     def read_taxonomy_csv():
@@ -100,16 +99,21 @@ def generate_new_organism_csv():
             items = [species_id, species, species_rank]
             seq_order = re.sub('\s+', ' ', seq_order[:-1])
             parents = seq_order.split('; ')
-            parent_size = 3
-            tops = [''] * NUM_TOP_ANCIENTS * parent_size
-            for i in range(min(NUM_TOP_ANCIENTS, len(parents))):
-                tops[i*parent_size+1] = parents[i]
-                if parents[i] in name_id:
-                    pid = name_id[parents[i]]
-                    tops[i*parent_size] = pid
-                    tops[i*parent_size+2] = id_rank[pid]
+            top_parent_size, bottom_parent_size = 3, 3
 
-            items += tops
+
+            for direction in (1, -1):
+                if direction == -1:
+                    parents.reverse()
+                tops = [''] * NUM_TOP_BOTTOM_ANCIENTS * top_parent_size
+                for i in range(min(NUM_TOP_BOTTOM_ANCIENTS, len(parents))):
+                    tops[i*top_parent_size+1] = parents[i]
+                    if parents[i] in name_id:
+                        pid = name_id[parents[i]]
+                        tops[i*top_parent_size] = pid
+                        tops[i*top_parent_size+2] = id_rank[pid]
+                items += tops
+
             items.append(content)
             if species_id != '' and not species_id in already_processed:
                 already_processed[species_id] = 1
@@ -158,7 +162,7 @@ def update_annotation_csv_with_tax_id_column():
 
 
 if __name__ == "__main__":
+    #update_annotation_csv_with_tax_id_column()
     #gen_taxonomy_csv_files(task='create_TAXDIVISION_csv')
     #gen_taxonomy_csv_files(task='create_TAXNODE_csv')
-    #generate_new_organism_csv()
-    update_annotation_csv_with_tax_id_column()
+    generate_new_organism_csv()

@@ -17,9 +17,9 @@ $task = $task_add_indexes_to_tables;
 #$task = $task_update_taxid_to_Annotation; // then reload ANNOTATION.csv to database
 
 $task = $task_split_patent_Reference;
-$task = $task_create_taxonomy_tables;
-
 $task = $task_create_all_tables;
+
+$task = $task_create_taxonomy_tables;
 $task = $task_load_csv_files_to_database;
 
 
@@ -169,9 +169,8 @@ function load_csv_files($mysqli)
     $tables = array('taxNode');
     $tables = array('taxDivision');
     $tables = array('Reference', 'Annotation', 'AnnotationReference', 'Keywords', 'Source', 'Comment', 'Organism', 'Dblink');
-    $tables = array('Reference');
     $tables = array('Organism_new', 'Organism_tax');
-    $tables = array('Annotation');
+    $tables = array('Organism_new');
     foreach ($tables as $table)
     {
         $null_clause = "";
@@ -193,7 +192,7 @@ function load_csv_files($mysqli)
         }
         elseif ($table == "Organism_new")
         {
-            $null_clause = "(tax_id, tax_name, tax_rank, @top1_tax_id, top1_tax_name, top1_tax_rank, @top2_tax_id, top2_tax_name, top2_tax_rank, @top3_tax_id, top3_tax_name, top3_tax_rank, content) SET top1_tax_id=nullif(@top1_tax_id,''),top2_tax_id=nullif(@top2_tax_id,''),top3_tax_id=nullif(@top3_tax_id,'')";   
+            $null_clause = "(tax_id, tax_name, tax_rank, @top1_tax_id, top1_tax_name, top1_tax_rank, @top2_tax_id, top2_tax_name, top2_tax_rank, @top3_tax_id, top3_tax_name, top3_tax_rank, @bottom1_tax_id, bottom1_tax_name, bottom1_tax_rank, @bottom2_tax_id, bottom2_tax_name, bottom2_tax_rank, @bottom3_tax_id, bottom3_tax_name, bottom3_tax_rank, content) SET top1_tax_id=nullif(@top1_tax_id,''),top2_tax_id=nullif(@top2_tax_id,''),top3_tax_id=nullif(@top3_tax_id,''), bottom1_tax_id=nullif(@bottom1_tax_id,''),bottom2_tax_id=nullif(@bottom2_tax_id,''),bottom3_tax_id=nullif(@bottom3_tax_id,'')";   
         }
 
         $filename = strtoupper($table); 
@@ -245,6 +244,7 @@ function create_taxonomy_tables($mysqli)
     $tables = array('taxNode');
     $tables = array('taxDivision');
     $tables = array('Organism_new', 'Organism_tax');
+    $tables = array('Organism_new');
     foreach ($tables as $table) {
         create_table($mysqli, $table);
     }
@@ -437,6 +437,15 @@ function create_table($mysqli, $table)
             top3_tax_id INT,
             top3_tax_name VARCHAR(500),
             top3_tax_rank VARCHAR(100),
+            bottom1_tax_id INT,
+            bottom1_tax_name VARCHAR(500),
+            bottom1_tax_rank VARCHAR(100),
+            bottom2_tax_id INT,
+            bottom2_tax_name VARCHAR(500),
+            bottom2_tax_rank VARCHAR(100),
+            bottom3_tax_id INT,
+            bottom3_tax_name VARCHAR(500),
+            bottom3_tax_rank VARCHAR(100),
             content VARCHAR(5000),
             INDEX (tax_name),
             INDEX (tax_rank),
@@ -449,6 +458,15 @@ function create_table($mysqli, $table)
             INDEX (top3_tax_id),
             INDEX (top3_tax_name),
             INDEX (top3_tax_rank),
+            INDEX (bottom1_tax_id),
+            INDEX (bottom1_tax_name),
+            INDEX (bottom1_tax_rank),
+            INDEX (bottom2_tax_id),
+            INDEX (bottom2_tax_name),
+            INDEX (bottom2_tax_rank),
+            INDEX (bottom3_tax_id),
+            INDEX (bottom3_tax_name),
+            INDEX (bottom3_tax_rank),
             PRIMARY KEY(tax_id)
         )";
     }
