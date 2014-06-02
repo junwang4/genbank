@@ -54,7 +54,11 @@ For example, here is the ORGANISM field of an annotation
 
 3. We no long need to use the column "organismId" in table Annotation. Instead, we will use "tax_id".
 
-For example, to get the taxonomy information for the annotation with GI=2, we can do this:
+For example, to get some taxonomy information for the annotation with GI=2, we can do this:
 
-SELECT a.gi, a.definition, o.* FROM Annotation as a, Organism_new as o WHERE a.tax_id = o.tax_id AND a.gi=2;
+SELECT a.gi, a.definition, o.tax_name, o.tax_rank, o.top1_tax_name, o.top1_tax_rank, o.bottom1_tax_name, o.bottom1_tax_rank FROM Annotation as a, Organism_new as o WHERE a.tax_id = o.tax_id AND a.gi=2;
+
+| gi | definition                                                 | tax_name   | tax_rank | top1_tax_name | top1_tax_rank | bottom1_tax_name | bottom1_tax_rank |
+
+|  2 | B.taurus DNA sequence 1 from patent application EP0238993. | Bos taurus | species  | Eukaryota     | superkingdom  | Bos              | genus            |
 
