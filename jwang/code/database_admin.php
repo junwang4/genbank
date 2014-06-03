@@ -184,7 +184,7 @@ function load_csv_files($mysqli)
         }
         elseif ($table == "taxNode")
         {
-            $null_clause = "(id, name, parent_id, parent_name, @rank, @locus_prefix, division_id, inherited_div_flag, genetic_code_id, inherited_GC_flag, mitochondrial_genetic_code_id, inherited_MGC_flag, GenBank_hidden_flag, hidden_subtree_root_flag, @comments) SET rank = nullif(@rank,''), locus_prefix = nullif(@locus_prefix,''), comments = nullif(@comments,'')";
+            $null_clause = "(id, name, unique_name, parent_id, parent_name, @rank, @locus_prefix, division_id, inherited_div_flag, genetic_code_id, inherited_GC_flag, mitochondrial_genetic_code_id, inherited_MGC_flag, GenBank_hidden_flag, hidden_subtree_root_flag, @comments) SET rank = nullif(@rank,''), locus_prefix = nullif(@locus_prefix,''), comments = nullif(@comments,'')";
         }
         elseif ($table == "Organism_tax")
         {
@@ -388,6 +388,7 @@ function create_table($mysqli, $table)
         $sql = "CREATE TABLE IF NOT EXISTS " . $table . " (
             id INT,
             name VARCHAR(200),
+            unique_name VARCHAR(200),
             parent_id INT,
             parent_name VARCHAR(200),
             rank VARCHAR(100),

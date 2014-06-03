@@ -14,8 +14,9 @@ print "csv_dir: %s\ntaxonomy_dir: %s\n" % (csv_dir, taxonomy_dir)
 
 def gen_taxonomy_csv_files(task):
 
+    id_name = {}
+    id_uniquename = {}
     def read_names():
-        id_name = {}
         file_dmp_names = "%s/names.dmp" % taxonomy_dir
         #file_csv_names = "%s/TAXNAME.csv" % csv_dir
         cnt = 0
@@ -26,14 +27,18 @@ def gen_taxonomy_csv_files(task):
                 continue
             #out.append("%s|%s" % (tax_id, name))
             id_name[tax_id] = name
+            id_uniquename[tax_id] = unique_name
             if len(name) > maxL: maxL = len(name)
             cnt += 1
             if debug and cnt > 100: break
         print 'max length: ', maxL 
-        return id_name
+        print len(id_name.keys())
+        print len(id_uniquename.keys())
+        #return id_name
 
     def write_csv_for_nodes():
-        id_name = read_names()
+        #id_name = read_names()
+        read_names()
         file_dmp_nodes = "%s/nodes.dmp" % taxonomy_dir
         file_csv_nodes = "%s/TAXNODE.csv" % csv_dir
         cnt = 0 
@@ -41,8 +46,8 @@ def gen_taxonomy_csv_files(task):
         for line in open(file_dmp_nodes, 'r').readlines():
             row = line.replace("\t", "")[:-2].split("|")
             id, pid = row[0], row[1]
-            name, pname = id_name[id], id_name[pid]
-            new_row = [id, name, pid, pname]
+            name, unique_name, pname = id_name[id], id_uniquename[id], id_name[pid]
+            new_row = [id, name, unique_name, pid, pname]
             new_row.extend(row[2:])
             out.append("|".join(new_row))
             cnt += 1
@@ -65,18 +70,19 @@ def gen_taxonomy_csv_files(task):
 
 def generate_new_organism_csv():
     NUM_TOP_BOTTOM_ANCIENTS = 3
-    id_parentId, id_name, id_rank, name_id = {}, {}, {}, {}
+    id_parentId, id_name, id_rank, name_id, name_shared_uniquenames = {}, {}, {}, {}, {}
 
     def read_taxonomy_csv():
         csvfile = open("%s/TAXNODE.csv" % csv_dir)
         for row in csv.reader(csvfile, delimiter='|'):
         #2|Bacteria|131567|cellular organisms|superkingdom||0|0|11|0|0|0|0|0|
-            node_id, node_name, parent_id, parent_name, rank = row[:5]
+            node_id, node_name, unique_name, parent_id, parent_name, rank = row[:6]
             id_name[node_id] = node_name
             name_id[node_name] = node_id
+            if node_name not in name_shared_uniquenames: name_shared_uniquenames[node_name] = []
+            name_shared_uniquenames[node_name].append(unique_name)
             id_parentId[node_id] = parent_id
             id_rank[node_id] = rank
-        #return id_parentId, id_name, id_rank
 
     def gen_new_organism_csv():
         read_taxonomy_csv()
@@ -84,11 +90,16 @@ def generate_new_organism_csv():
         out = []
         out_org_tax = []
         already_processed = {}
+        weird_species_name_cnt = {}
         for row in csv.reader(csvfile, delimiter='|', quotechar='"'):
         #139189705|"marine metagenome    unclassified sequences; metagenomes; ecological metagenomes."
             organism_id, content = row
+            species, seq_order = content.split('\t',1)
             try:
-                species, seq_order = content.split('\t',1)
+                if species in name_shared_uniquenames and len(name_shared_uniquenames[species]) > 1:
+                    print "shared weird name:", row, name_shared_uniquenames[species]
+                    weird_species_name_cnt[species] = weird_species_name_cnt.get(species, 0) +1
+                    continue
             except:
                 print "tab key wrong"
                 print content
@@ -119,6 +130,8 @@ def generate_new_organism_csv():
                 already_processed[species_id] = 1
                 out.append("|".join(items))
             out_org_tax.append("%s|%s" % (organism_id, species_id))
+
+        print weird_species_name_cnt
 
         out_csvfile = "%s/ORGANISM_NEW.csv" % csv_dir
         open(out_csvfile, 'w').write("\n".join(out))
