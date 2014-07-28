@@ -1,5 +1,52 @@
 This file is used to document what Jun has done.
 
+== 2014-07-28 ==
+
+A note about the Reference table, especially its id
+
+First, take a look at this example,
+
+mysql> SELECT * FROM Reference LIMIT 2;
+
+| id   | reference           | authors                                  | consortium | title                                                                               | journal                                                                                                       | pubmed  | remark |
+
+| 4001 | 1  (bases 1 to 556) | Wu,Z.A., Liu,W.X., Murphy,C. and Gall,J. | NULL       | Satellite 1 DNA sequence from genomic DNA of the giant panda	Ailuropoda melanoleuca | Nucleic Acids Res. 18 (4), 1054 (1990)                                                                        | 2315021 | NULL   |
+
+| 4002 | 2  (bases 1 to 556) | Gall,J.                                  | NULL       | Direct Submission                                                                   | Submitted (12-DEC-1989) Gall J., Carnegie Institution, 115 West University Parkway, Baltimore MD 21210, U S A | NULL    | NULL   |
+
+The ids for the first two references in the table are: 4001 and 4002
+
+From the two numbers, we can quickly connect them with the annotation whose gi (genbank index) is 4. This is because the reference id is designed as the combination of two numbers:
+
+(1) the gi of the first annotation that the reference occurs. (A reference may occur in many annotations, so we only need to use the first annotation.)
+
+(2) the ordered position of the reference in the annotation. (An annotation may have two or more references).  The order starts from 001, and could be as large as 999.
+
+To confirm this, run the following query:
+
+mysql> SELECT * FROM AnnotationReference WHERE gi=4;
++-----------+------+-------------+
+| keyId     | gi   | referenceId |
++-----------+------+-------------+
+| 164599015 |    4 |        4001 |
+| 164599016 |    4 |        4002 |
+
+or 
+
+mysql> SELECT * FROM AnnotationReference WHERE referenceId>=4001 and referenceId<=4002;
++-----------+------+-------------+
+| keyId     | gi   | referenceId |
++-----------+------+-------------+
+| 164599015 |    4 |        4001 |
+| 164599016 |    4 |        4002 |
++-----------+------+-------------+
+
+As a second example, if an annotation has a gi of 9923, and it has three references (and we suppose that it is the first annotation that these references occur). Then the ids of the three references are: 9923001, 9923002, 9923003.
+
+I should emphasize that the Reference id such as 9923001 was designed this way so that we, as humans, when reading 9923001, can quickly make connections between annotation 9923 (and/or some following annotations such as 9924, 9925...) and reference 9923001. To find out which annotations the reference 9923001 is associated with, we need to query the table "AnnotationReference".
+
+
+
 == 2014-06-02 ==
 
 Just found that some organisms share the same name (853 such cases, out of over 1 million). For example, bacteria has two entries in table taxNode; one has the rank of superkingdom, and the other one the rank of genus. There are 853 such cases of name sharing.
