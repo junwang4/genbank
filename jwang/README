@@ -8,11 +8,11 @@ First, take a look at this example,
 
 mysql> SELECT * FROM Reference LIMIT 2;
 
-| id   | reference           | authors                                  | consortium | title                                                                               | journal                                                                                                       | pubmed  | remark |
+| id   | reference           | authors    ...
 
-| 4001 | 1  (bases 1 to 556) | Wu,Z.A., Liu,W.X., Murphy,C. and Gall,J. | NULL       | Satellite 1 DNA sequence from genomic DNA of the giant panda	Ailuropoda melanoleuca | Nucleic Acids Res. 18 (4), 1054 (1990)                                                                        | 2315021 | NULL   |
+| 4001 | 1  (bases 1 to 556) | Wu,Z.A., Liu,W.X., Murphy,C. and Gall,J. ...
 
-| 4002 | 2  (bases 1 to 556) | Gall,J.                                  | NULL       | Direct Submission                                                                   | Submitted (12-DEC-1989) Gall J., Carnegie Institution, 115 West University Parkway, Baltimore MD 21210, U S A | NULL    | NULL   |
+| 4002 | 2  (bases 1 to 556) | Gall,J.                                  ...
 
 The ids for the first two references in the table are: 4001 and 4002
 
