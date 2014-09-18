@@ -17,10 +17,11 @@ $task = $task_add_indexes_to_tables;
 #$task = $task_update_taxid_to_Annotation; // then reload ANNOTATION.csv to database
 
 $task = $task_split_patent_Reference;
-$task = $task_create_all_tables;
 
 $task = $task_create_taxonomy_tables;
-$task = $task_load_csv_files_to_database;
+
+$task = $task_load_csv_files_to_database;  # note that REFERENCE_with_year
+$task = $task_create_all_tables;
 
 
 if ($task == $task_create_all_tables) 
@@ -171,6 +172,7 @@ function load_csv_files($mysqli)
     $tables = array('Reference', 'Annotation', 'AnnotationReference', 'Keywords', 'Source', 'Comment', 'Organism', 'Dblink');
     $tables = array('Organism_new', 'Organism_tax');
     $tables = array('Organism_new');
+    $tables = array('Reference');
     foreach ($tables as $table)
     {
         $null_clause = "";
@@ -180,7 +182,7 @@ function load_csv_files($mysqli)
         }
         elseif ($table == "Reference")
         {
-            $null_clause = "(id, reference, @authors, @consortium, title, journal, @pubmed, @remark) SET authors = nullif(@authors,''), consortium = nullif(@consortium,''), pubmed = nullif(@pubmed,''), remark = nullif(@remark,'')";
+            $null_clause = "(id, reference, @authors, @consortium, title, journal, @pubmed, @remark, @year) SET authors = nullif(@authors,''), consortium = nullif(@consortium,''), pubmed = nullif(@pubmed,''), remark = nullif(@remark,''), year = nullif(@year,'')";
         }
         elseif ($table == "taxNode")
         {
@@ -200,7 +202,10 @@ function load_csv_files($mysqli)
             $filename = "ANNOTATION_REFERENCE";
         } else if ($table == "Annotation") {
             $filename = "ANNOTATION_tax_id";
+        } elseif ($table == "Reference") { # for new Reference table (with year added)
+            $filename = "REFERENCE_with_year";
         }
+
         $csv_fpath = $csv_dir . "/" . $filename . ".csv";
         $sql = "LOAD DATA LOCAL INFILE '$csv_fpath' INTO TABLE genbank.$table FIELDS TERMINATED BY '|' ENCLOSED BY '\"' " . $null_clause ; 
 
@@ -234,6 +239,7 @@ function create_all_tables($mysqli)
     $tables = array('AnnotationReference');
     $tables = array('Reference', 'Annotation', 'AnnotationReference', 'Keywords', 'Source', 'Comment', 'Organism', 'Dblink');
     $tables = array('Annotation');
+    $tables = array('Reference');
     foreach ($tables as $table) {
         create_table($mysqli, $table);
     }
@@ -271,12 +277,14 @@ function create_table($mysqli, $table)
             journal VARCHAR(5000),
             pubmed VARCHAR(50),
             remark VARCHAR(1000),
+            year VARCHAR(50),
             INDEX (reference),
             INDEX (authors),
             INDEX (consortium),
             INDEX (title),
             INDEX (journal),
             INDEX (pubmed),
+            INDEX (year),
             PRIMARY KEY (id)
         )";
     } 
