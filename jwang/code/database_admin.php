@@ -277,7 +277,7 @@ function create_table($mysqli, $table)
             journal VARCHAR(5000),
             pubmed VARCHAR(50),
             remark VARCHAR(1000),
-            year VARCHAR(50),
+            year INT,
             INDEX (reference),
             INDEX (authors),
             INDEX (consortium),
