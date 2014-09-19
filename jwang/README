@@ -1,5 +1,32 @@
 This file is used to document what Jun has done.
 
+== 2014-09-18 ==
+
+I added a new column "year" for table "genbank.Reference"
+
+Now you can run something like: 
+
+mysql> SELECT * FROM genbank.Reference WHERE year<1980;
+mysql> SELECT year, count(*) FROM genbank.Reference GROUP BY year;
+
+The "year" information is extracted from column "journal".
+
+There are three types of journal data (note that Patent-like references are not processed):
+
+(1) Published.
+journal example: "Cell 15 (2), 541-550 (1978)"
+extracted year:  1978
+
+(2) Unpublished.
+journal example: "Unpublished"
+extracted year:  null
+
+(3) Direct Submission.
+journal example: "Submitted (12-OCT-2001) Biology, RPI, 110 8th St, Troy, NY 12180,	USA"
+extracted year:  2001
+
+
+
 == 2014-07-28 ==
 
 A note about the Reference table, especially its id
