@@ -1,7 +1,18 @@
 =======
 Step 0. FTP site: ftp://ftp.ncbi.nlm.nih.gov/genbank  (check root folder "data")
 
-TODO: write a script to download .gz files to folder annotation_gz_dir (i.e. /home/data/genbank/ann_gz, see configuration below)
+Download .gz files to folder /home/data/genbank/ann_gz (as defined in annotation_gz_dir, see configuration in Step 1)
+
+How to download?
+
+After log in to your metadatalab Linux server:
+$ cd /home/data
+$ mkdir genbank2018
+$ cd genbank2018
+$ mkdir ann_gz
+$ ftp ftp://ftp.ncbi.nlm.nih.gov
+ftp> cd genbank
+ftp> get *.seq.gz
 =======
 
 =======
@@ -22,8 +33,8 @@ csv_dir=[your_folder_of_the_output_csv] // default: /home/data/genbank/csv
 Step 2. Run: "parse.php"  -- patent files (gbpat*) are not included for the current phase
 =======
 
-NOTE: It is recommended that you make a copy of the file "parse.php" to something like "my_parse.php", and then "php my_parse.php"
-This way you can edit the file "my_parse.php" as you like, and you don't have to fight against "git pull".
+Advice: It is recommended that you make a copy of the file "parse.php" to something like "my_parse.php", and then "php my_parse.php"
+This way you can edit the file "my_parse.php" as you like without messing up the git repo.
 
 The genbank annotation data (from "annotation_gz_dir/*.ann.gz") will be parsed and output to csv files in "csv_dir/*.csv"
 
