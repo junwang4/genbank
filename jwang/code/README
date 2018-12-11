@@ -1,3 +1,8 @@
+======
+Step 0. Go to ftp://ftp.ncbi.nlm.nih.gov/genbank
+Download the gzip files to: /home/data/genbank/ann_gz
+======
+
 =======
 Step 1. Create a configuration file in ./code/genbank.conf
 =======
