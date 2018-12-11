@@ -1,7 +1,8 @@
-======
-Step 0. Go to ftp://ftp.ncbi.nlm.nih.gov/genbank
-Download the gzip files to: /home/data/genbank/ann_gz
-======
+=======
+Step 0. FTP site: ftp://ftp.ncbi.nlm.nih.gov/genbank  (check root folder "data")
+
+TODO: write a script to download .gz files to folder annotation_gz_dir (i.e. /home/data/genbank/ann_gz, see configuration below)
+=======
 
 =======
 Step 1. Create a configuration file in ./code/genbank.conf
