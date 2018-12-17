@@ -6,10 +6,15 @@ Download .gz files to folder /home/data/genbank/ann_gz (as defined in annotation
 How to download?
 
 After log in to your metadatalab Linux server:
+#
+# NOTE: the metadata server doesn't have "ftp" client 
+# - I will write a python script to download the 3400+ files in the background (over 140GB of data)
+
 $ cd /home/data
 $ mkdir genbank2018
 $ cd genbank2018
-$ mkdir ann_gz
+$ mkdir seq_gz
+$ cd seq_gz
 $ ftp ftp://ftp.ncbi.nlm.nih.gov
 ftp> cd genbank
 ftp> get *.seq.gz
