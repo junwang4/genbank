@@ -3,20 +3,9 @@ Step 0. FTP site: ftp://ftp.ncbi.nlm.nih.gov/genbank  (check root folder "data")
 
 How to download?
 
-After log in to your metadatalab Linux server:
-#
-# NOTE: the metadata server doesn't have "ftp" client 
-# - I will write a python script to download the 3400+ files in the background (over 140GB of data)
-#
+ftp://ftp.ncbi.nlm.nih.gov
 
-$ cd /home/data
-$ mkdir genbank2018
-$ cd genbank2018
-$ mkdir seq_gz
-$ cd seq_gz
-$ ftp ftp://ftp.ncbi.nlm.nih.gov
-ftp> cd genbank
-ftp> get *.seq.gz
+I have a python script for downloading *.seq.gz files - todo
 =======
 
 =======
