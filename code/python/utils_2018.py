@@ -42,7 +42,7 @@ def download_seq_gz():
 do_it = False
 do_it = True
 def run(cmd): 
-    print(cmd)
+    if 0: print(cmd)
     if do_it:
         os.system(cmd)
 
@@ -51,7 +51,9 @@ accession_cnt = {}
 def process_one_ann_file(fname_ann):
     print(f'processing {fname_ann}')
     for line in open(fname_ann):
-        if line[:10] == "ACCESSION ":
+        #if line[:10] == "ACCESSION ":  # there could be multi or multi-line accession numbers:
+                                        # for example, gbbct176.ann has: ACCESSION    CP011124 JXRE01000000 JXRE01000001 ...
+        if line[:8] == "VERSION ":
             val = line[12:].strip()
             accession_cnt[val] = accession_cnt.get(val, 0) +1
             FOUT.write(f"{val} {accession_cnt[val]}\n")
@@ -62,7 +64,7 @@ def get_2018_accession_only():
     for fpath in glob.glob(f'{ann_gz_folder}/*.gz'):
         fname_gz = fpath.split('/')[-1]
         fname = fname_gz.split('.gz')[0]
-        print(fname, fname_gz)
+        #print(fname, fname_gz)
         cmd = f'cp "{fpath}" /tmp'
         run(cmd)
         cmd = f'gunzip "/tmp/{fname_gz}"'
