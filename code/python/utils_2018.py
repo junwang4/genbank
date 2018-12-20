@@ -46,7 +46,9 @@ def run(cmd):
     if do_it:
         os.system(cmd)
 
-FOUT = open('/tmp/accession_cnt.dat', 'w')
+
+FOUT = open('/tmp/accession_cnt_tmp.dat', 'w')
+
 accession_cnt = {}
 def process_one_ann_file(fname_ann):
     print(f'processing {fname_ann}')
@@ -128,13 +130,30 @@ def check_uniqueness_of_accession_number_2013():
             else:
                 hash[line] = 1
 
+def check_uniqueness_of_accession_number_2018():
+    hash = {}
+    with open('/tmp/accession_cnt.dat') as fin:
+        cnt = 0
+        for line in fin:
+            accession = line.split('.')[0]
+            cnt += 1
+            if cnt>10: break
+            #print(line, accession)
+            if accession in hash:
+                print(f'redundant: {line} {accession}')
+                break
+            else:
+                hash[accession] = 1
+
 def main():
     tic = time.time()
 
     #download_seq_gz()
     #get_2013_gi_accession()
     #check_uniqueness_of_accession_number_2013()
-    get_2018_accession_only()
+
+    #get_2018_accession_only()
+    check_uniqueness_of_accession_number_2018()
 
     print(f'time: {time.time()-tic:.1f}s')
 
