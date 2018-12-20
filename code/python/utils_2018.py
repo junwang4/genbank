@@ -1,4 +1,12 @@
-import re, os, time
+import re, os, time, glob
+import numpy as np
+import socket
+
+if socket.gethostname().find('metadatalab')>=0:
+    DATA_ROOT = "/home/data/genbank2018"
+else:
+    DATA_ROOT = "/Users/jwang72/git/genbank/data"
+print(f"DATA_ROOT={DATA_ROOT}")
 
 #<script>addRow("gbcon118.seq.gz","gbcon118.seq.gz",0,11692295,"11.2 MB",1539823020,"10/17/18, 8:37:00 PM");</script>
 #url = "ftp://ftp.ncbi.nlm.nih.gov/genbank/gbbct1.seq.gz
@@ -31,8 +39,44 @@ def download_seq_gz():
     print('2013 version has 1876 gz files')
     print(f'{len(out)/1876:.2f}')
 
+do_it = False
+do_it = True
+def run(cmd): 
+    print(cmd)
+    if do_it:
+        os.system(cmd)
+
+FOUT = open('/tmp/accession_cnt.dat', 'w')
+accession_cnt = {}
+def process_one_ann_file(fname_ann):
+    print(f'processing {fname_ann}')
+    for line in open(fname_ann):
+        if line[:10] == "ACCESSION ":
+            val = line[12:].strip()
+            accession_cnt[val] = accession_cnt.get(val, 0) +1
+            FOUT.write(f"{val} {accession_cnt[val]}\n")
+    
+
+def get_2018_accession_only():
+    ann_gz_folder = f"{DATA_ROOT}/ann_gz"
+    for fpath in glob.glob(f'{ann_gz_folder}/*.gz'):
+        fname_gz = fpath.split('/')[-1]
+        fname = fname_gz.split('.gz')[0]
+        print(fname, fname_gz)
+        cmd = f'cp "{fpath}" /tmp'
+        run(cmd)
+        cmd = f'gunzip "/tmp/{fname_gz}"'
+        run(cmd)
+        
+        process_one_ann_file(f'/tmp/{fname}')
+
+        cmd = f'rm "/tmp/{fname}"'
+        run(cmd)
+        #break
+
+    
+
 def get_2013_gi_accession():
-    import numpy as np
     cnt = 0
     out, out2, accession_freq = [], [], {}
     max_gi = 0
@@ -69,7 +113,7 @@ def get_2013_gi_accession():
     if 0:
         print(f'max_gi: {max_gi}   cnt: {len(out2)}')
 
-def check_uniqueness_of_accession_number():
+def check_uniqueness_of_accession_number_2013():
     hash = {}
     with open('accession_2013.dat') as fin:
         cnt = 0
@@ -87,7 +131,8 @@ def main():
 
     #download_seq_gz()
     #get_2013_gi_accession()
-    check_uniqueness_of_accession_number()
+    #check_uniqueness_of_accession_number_2013()
+    get_2018_accession_only()
 
     print(f'time: {time.time()-tic:.1f}s')
 

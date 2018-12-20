@@ -75,8 +75,7 @@ def is_end_of_record(line): return line[0:2] == "//"
 
 
 
-DATA_ROOT = "../data"
-DATA_ROOT = ".."
+DATA_ROOT = "../../data"
 
 def read_ftp_index_file():
     index_file = "%s/ftp-index.html" % DATA_ROOT
