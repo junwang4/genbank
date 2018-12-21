@@ -81,7 +81,7 @@ function parse($fname_ann)
 {
     global $Conf;
 
-    $keys_annotation = array(LOCUS, DEFINITION, ACCESSION, VERSION, GI, KEYWORDS, SEGMENT, DBLINK, SOURCE, ORGANISM, COMMENT, 'locus_name', 'locus_sequence_length', 'locus_sequence_strands', 'locus_nucleic_acid_type', 'locus_linear_circular', 'locus_division_code', 'locus_date');
+    $keys_annotation = array(LOCUS, DEFINITION, ACCESSION, VERSION, KEYWORDS, SEGMENT, DBLINK, SOURCE, ORGANISM, COMMENT, 'locus_name', 'locus_sequence_length', 'locus_sequence_strands', 'locus_nucleic_acid_type', 'locus_linear_circular', 'locus_division_code', 'locus_date');
     $keys_reference = array(REFERENCE, AUTHORS, CONSRTM, TITLE, JOURNAL, PUBMED, REMARK);
 
     $fpath_ann = $Conf["tmp_dir"] . "/$fname_ann";
@@ -114,7 +114,7 @@ function parse($fname_ann)
 
         if ($key == GENBANK_RECORD_SEP) 
         {
-            save_reference($ref, $ann[GI], $refIds_in_one_record, $is_patent);
+            save_reference($ref, $ann[ACCESSION], $refIds_in_one_record, $is_patent);
             save_annotation($ann, $refIds_in_one_record);
 
 
@@ -132,7 +132,7 @@ function parse($fname_ann)
             if ($key == VERSION)
             {
 				$arr = explode(".", $val);
-				$ann[ACCESSION] = $arr[0];
+				$ann[ACCESSION] = $arr[0]; // this will overwrite the previous ACCESSION which could be multi-records or even multi-line
 				$ann[VERSION] = $arr[1];
             }
             else 
@@ -169,7 +169,7 @@ function parse($fname_ann)
         {
             if ($key == REFERENCE && $ref[REFERENCE])
             {
-                save_reference($ref, $ann[GI], $refIds_in_one_record, $is_patent);
+                save_reference($ref, $ann[ACCESSION], $refIds_in_one_record, $is_patent);
                 $ref = init_array($keys_reference);
             }
             if ($ref[$key]) {
@@ -231,8 +231,8 @@ function save_annotation(&$ann, $refIds_in_one_record)
             $key = gen_hash_key($content);
             if (! array_key_exists($key, $Hash_Misc[$category]))
             {
-                $Hash_Misc[$category][$key] = $ann[GI]; 
-                save_misc_table($category, $ann[GI], $content);
+                $Hash_Misc[$category][$key] = $ann[ACCESSION]; 
+                save_misc_table($category, $ann[ACCESSION], $content);
             }
             $ann[$category] = $Hash_Misc[$category][$key];
 
@@ -247,8 +247,8 @@ function save_annotation_table($ann)
 {
     global $Fhandles;
     fputcsv($Fhandles[ANNOTATION], array(
-        $ann[GI], $ann[VERSION], $ann[KEYWORDS], $ann[SOURCE], $ann[ORGANISM], $ann[COMMENT], $ann[DBLINK],
-        $ann[LOCUS], $ann[ACCESSION], $ann[DEFINITION], $ann[SEGMENT],
+        $ann[ACCESSION], $ann[VERSION], $ann[KEYWORDS], $ann[SOURCE], $ann[ORGANISM], $ann[COMMENT], $ann[DBLINK],
+        $ann[LOCUS], $ann[DEFINITION], $ann[SEGMENT],
         $ann["locus_name"], $ann["locus_sequence_length"], $ann["locus_sequence_strands"], $ann["locus_nucleic_acid_type"],
         $ann["locus_linear_circular"], $ann["locus_division_code"], $ann["locus_date"]
     ), CSV_FIELD_SEPARATOR);
