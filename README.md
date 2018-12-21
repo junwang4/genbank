@@ -1,4 +1,4 @@
-genbank
+GenBank Data Processing
 =======
 
-GenBank research
+Syracuse University Information School

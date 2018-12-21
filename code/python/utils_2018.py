@@ -61,25 +61,6 @@ def process_one_ann_file(fname_ann):
             FOUT.write(f"{val} {accession_cnt[val]}\n")
     
 
-def get_2018_accession_only():
-    ann_gz_folder = f"{DATA_ROOT}/ann_gz"
-    for fpath in glob.glob(f'{ann_gz_folder}/*.gz'):
-        fname_gz = fpath.split('/')[-1]
-        fname = fname_gz.split('.gz')[0]
-        #print(fname, fname_gz)
-        cmd = f'cp "{fpath}" /tmp'
-        run(cmd)
-        cmd = f'gunzip "/tmp/{fname_gz}"'
-        run(cmd)
-        
-        process_one_ann_file(f'/tmp/{fname}')
-
-        cmd = f'rm "/tmp/{fname}"'
-        run(cmd)
-        #break
-
-    
-
 def get_2013_gi_accession():
     cnt = 0
     out, out2, accession_freq = [], [], {}
@@ -129,6 +110,22 @@ def check_uniqueness_of_accession_number_2013():
                 break
             else:
                 hash[line] = 1
+
+
+def get_2018_accession_only():
+    ann_gz_folder = f"{DATA_ROOT}/ann_gz"
+    for fpath in glob.glob(f'{ann_gz_folder}/*.gz'):
+        fname_gz = fpath.split('/')[-1]
+        fname = fname_gz.split('.gz')[0]
+        #print(fname, fname_gz)
+        cmd = f'cp "{fpath}" /tmp'
+        run(cmd)
+        cmd = f'gunzip "/tmp/{fname_gz}"'
+        run(cmd)
+        process_one_ann_file(f'/tmp/{fname}')
+        cmd = f'rm "/tmp/{fname}"'
+        run(cmd)
+        #break
 
 def check_uniqueness_of_accession_number_2018():
     hash = {}

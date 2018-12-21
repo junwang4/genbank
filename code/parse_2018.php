@@ -131,15 +131,9 @@ function parse($fname_ann)
         {
             if ($key == VERSION)
             {
-                //AF000122.1  GI:2098806
-                if (strpos($val, 'GI:')) {
-                    list($ver, $gi) = split("  ", $val);
-                    #if ($debug) print "*** $val\n";
-                    $ann[GI] = trim(substr($gi, 3));
-                    list($foo, $ann[VERSION]) = split("\.", $ver);
-                } else {
-                    list($foo, $ann[VERSION]) = split("\.", $val);
-                }
+				$arr = explode(".", $val);
+				$ann[ACCESSION] = $arr[0];
+				$ann[VERSION] = $arr[1];
             }
             else 
             {
