@@ -180,6 +180,9 @@ function parse($fname_ann)
         }
 
     }
+    $cmd = "rm \"$fpath_ann\"";
+	#print($cmd);
+    exec($cmd);
 }
 
 
