@@ -1,12 +1,13 @@
-import ConfigParser, csv, re
+import csv, re, sys
+import configparser
 
-config = ConfigParser.ConfigParser()
-config.read('py.conf')
-
+config = configparser.ConfigParser()
+config.read('./py.conf')
+#config.read('./python/py.conf')
 config_option = "DEFAULT"
-
 csv_dir = config.get(config_option, 'csv_dir')
-print "csv_dir: %s\n" % (csv_dir)
+print(f"csv_dir: {csv_dir}\n")
+
 
 # PLoS Biol. 5 (3), E17 (2007)"|17355172|"Publication Status: Available-Online prior to print" 
 # Submitted (02-MAR-2007) J. Craig Venter Institute, 9704 Medical	Center Drive, Rockville, MD 20850, USA
@@ -33,8 +34,6 @@ def parse_year():
                 arr.append(year)
                 fout.write("|".join(arr))
                 fout.write("\n")
-    
-    #open("/tmp/a", 'w').write("\n".join(out))
-
+ 
 if __name__ == "__main__":
     parse_year()

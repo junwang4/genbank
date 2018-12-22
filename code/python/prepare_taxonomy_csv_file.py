@@ -1,16 +1,19 @@
+import configparser, csv, re, sys
+
 debug = True
 debug = False
 
-import ConfigParser, csv, re
-
-config = ConfigParser.ConfigParser()
+config = configparser.ConfigParser()
 config.read('py.conf')
+#config.read('./python/py.conf')
 
 config_option = "DEFAULT"
 
 csv_dir = config.get(config_option, 'csv_dir')
 taxonomy_dir = config.get(config_option, 'taxonomy_dir')
-print "csv_dir: %s\ntaxonomy_dir: %s\n" % (csv_dir, taxonomy_dir)
+print(f"csv_dir: {csv_dir}\ntaxonomy_dir: {taxonomy_dir}\n")
+
+#sys.exit()
 
 def gen_taxonomy_csv_files(task):
 
@@ -31,9 +34,9 @@ def gen_taxonomy_csv_files(task):
             if len(name) > maxL: maxL = len(name)
             cnt += 1
             if debug and cnt > 100: break
-        print 'max length: ', maxL 
-        print len(id_name.keys())
-        print len(id_uniquename.keys())
+        print('max length: ', maxL )
+        print(len(id_name.keys()))
+        print(len(id_uniquename.keys()))
         #return id_name
 
     def write_csv_for_nodes():
@@ -97,12 +100,12 @@ def generate_new_organism_csv():
             species, seq_order = content.split('\t',1)
             try:
                 if species in name_shared_uniquenames and len(name_shared_uniquenames[species]) > 1:
-                    print "shared weird name:", row, name_shared_uniquenames[species]
+                    print("shared weird name:", row, name_shared_uniquenames[species])
                     weird_species_name_cnt[species] = weird_species_name_cnt.get(species, 0) +1
                     continue
             except:
-                print "tab key wrong"
-                print content
+                print("tab key wrong")
+                print(content)
                 return
             #print "%-30s %s" % (species, seq_order)
             species_id = name_id[species] if species in name_id else ''
@@ -131,7 +134,7 @@ def generate_new_organism_csv():
                 out.append("|".join(items))
             out_org_tax.append("%s|%s" % (organism_id, species_id))
 
-        print weird_species_name_cnt
+        print('weird_species_name_cnt:', weird_species_name_cnt)
 
         out_csvfile = "%s/ORGANISM_NEW.csv" % csv_dir
         open(out_csvfile, 'w').write("\n".join(out))
@@ -144,7 +147,7 @@ def generate_new_organism_csv():
         level = 0
         while True:
             level += 1
-            print "%3s %10s %40s    %20s" % (level, id, id_name[id], id_rank[id])
+            print("%3s %10s %40s    %20s" % (level, id, id_name[id], id_rank[id]))
             if id == '1':
                 break
             id = pid
@@ -170,12 +173,11 @@ def update_annotation_csv_with_tax_id_column():
         for line in csvfile:
             organismId = line.split('|')[4]
             tax_id = organismId_taxId[organismId]
-            #print organismId, tax_id
             fout.write("%s|%s\n" % (line.strip(), organismId_taxId[organismId]))
 
 
 if __name__ == "__main__":
-    #update_annotation_csv_with_tax_id_column()
+    update_annotation_csv_with_tax_id_column()
     #gen_taxonomy_csv_files(task='create_TAXDIVISION_csv')
     #gen_taxonomy_csv_files(task='create_TAXNODE_csv')
-    generate_new_organism_csv()
+    #generate_new_organism_csv()  # after gen_taxonomy_csv_files(..)
