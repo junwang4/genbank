@@ -207,7 +207,7 @@ function load_csv_files($mysqli)
         }
 
         $csv_fpath = $csv_dir . "/" . $filename . ".csv";
-        $sql = "LOAD DATA LOCAL INFILE '$csv_fpath' INTO TABLE genbank.$table FIELDS TERMINATED BY '|' ENCLOSED BY '\"' " . $null_clause ; 
+        $sql = "LOAD DATA LOCAL INFILE '$csv_fpath' INTO TABLE genbank2018.$table FIELDS TERMINATED BY '|' ENCLOSED BY '\"' " . $null_clause ; 
 
         print("$sql\n");
         if (! $mysqli->query($sql) ) 
