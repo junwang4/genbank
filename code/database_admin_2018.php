@@ -237,9 +237,9 @@ function add_indexes_to_tables($mysqli)
 function create_all_tables($mysqli)
 {
     $tables = array('AnnotationReference');
-    $tables = array('Reference', 'Annotation', 'AnnotationReference', 'Keywords', 'Source', 'Comment', 'Organism', 'Dblink');
-    $tables = array('Annotation');
     $tables = array('Reference');
+    $tables = array('Reference', 'Annotation', 'AnnotationReference', 'Keywords', 'Source', 'Comment', 'Organism', 'Dblink');
+    $tables = array('Dblink');
     foreach ($tables as $table) {
         create_table($mysqli, $table);
     }
