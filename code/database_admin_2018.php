@@ -269,7 +269,7 @@ function create_table($mysqli, $table)
 
     if ($table == "Reference") {
         $sql = "CREATE TABLE IF NOT EXISTS " . $table . " (
-            id BIGINT,
+            id VARCHAR(50),
             reference VARCHAR(200),
             authors VARCHAR(10000),
             consortium VARCHAR(1000),
@@ -334,7 +334,7 @@ function create_table($mysqli, $table)
         $sql = "CREATE TABLE IF NOT EXISTS " . $table . " (
             keyId BIGINT,
             accession VARCHAR(50),
-            referenceId BIGINT,
+            referenceId VARCHAR(50),
             PRIMARY KEY (keyId),
             INDEX (accession),
             INDEX (referenceId),
@@ -344,7 +344,7 @@ function create_table($mysqli, $table)
     }
     else if ($table == "Keywords") {
         $sql = "CREATE TABLE IF NOT EXISTS " . $table . " (
-            id INT,
+            id VARCHAR(50),
             content VARCHAR(5000),
             INDEX (content),
             PRIMARY KEY(id)
@@ -352,7 +352,7 @@ function create_table($mysqli, $table)
     }
     else if ($table == "Source") {
         $sql = "CREATE TABLE IF NOT EXISTS " . $table . " (
-            id INT,
+            id VARCHAR(50),
             content VARCHAR(5000),
             INDEX (content),
             PRIMARY KEY(id)
@@ -360,7 +360,7 @@ function create_table($mysqli, $table)
     }
     else if ($table == "Organism") {
         $sql = "CREATE TABLE IF NOT EXISTS " . $table . " (
-            id INT,
+            id VARCHAR(50),
             content VARCHAR(5000),
             INDEX (content),
             PRIMARY KEY(id)
@@ -368,14 +368,14 @@ function create_table($mysqli, $table)
     }
     else if ($table == "Comment") {
         $sql = "CREATE TABLE IF NOT EXISTS " . $table . " (
-            id INT,
+            id VARCHAR(50),
             content VARCHAR(5000),
             PRIMARY KEY(id)
         )";
     }
     else if ($table == "Dblink") {
         $sql = "CREATE TABLE IF NOT EXISTS " . $table . " (
-            id INT,
+            id VARCHAR(50),
             content VARCHAR(5000),
             PRIMARY KEY(id)
         )";

@@ -9,7 +9,7 @@ $debug = true;
 if ($debug)
 {
     define("MAX_FILES_TO_PARSE", 1);
-    define("MAX_RECORDS_IN_A_FILE_FOR_PARSING", 10);
+    define("MAX_RECORDS_IN_A_FILE_FOR_PARSING", 50);
 }
 else
 {
@@ -186,7 +186,7 @@ function parse($fname_ann)
 }
 
 
-function save_reference($ref, $gi, &$refIds_in_one_record, $is_patent)
+function save_reference($ref, $accession, &$refIds_in_one_record, $is_patent)
 {
     global $Hash_Reference;
     if ($ref[PUBMED])
@@ -203,18 +203,21 @@ function save_reference($ref, $gi, &$refIds_in_one_record, $is_patent)
 
     if ($is_patent)
     { // every patent reference (in Journal) is unique
-        $rk = $gi*1000+1;
+        //$rk = $gi*1000+1; // old 2013
+        $rk = $accession . "_1";
         save_reference_table($ref, $rk);
     } 
     else 
     { 
         if (! array_key_exists($k, $Hash_Reference)) {
-            $Hash_Reference[$k] = ((int)$gi) * 1000 + sizeof($refIds_in_one_record) +1;
+            //$Hash_Reference[$k] = ((int)$gi) * 1000 + sizeof($refIds_in_one_record) +1;
+            $Hash_Reference[$k] = $accession . "_" . strval(1+ sizeof($refIds_in_one_record));
+
             save_reference_table($ref, $Hash_Reference[$k]);
         } 
         $rk = $Hash_Reference[$k];
     }
-    save_annotation_reference_table($gi, $rk);
+    save_annotation_reference_table($accession, $rk);
     array_push($refIds_in_one_record, $rk);
 }
 
@@ -263,11 +266,11 @@ function save_reference_table($ref, $refId)
     fputcsv($Fhandles[REFERENCE], array($refId, $ref[REFERENCE], $ref[AUTHORS], $ref[CONSRTM], $ref[TITLE], $ref[JOURNAL], $ref[PUBMED], $ref[REMARK]), CSV_FIELD_SEPARATOR);
 }
 
-function save_annotation_reference_table($gi, $refId) 
+function save_annotation_reference_table($accession, $refId) 
 {
     global $Fhandles, $AR_keyId;
     ++$AR_keyId;
-    fputcsv($Fhandles["ANNOTATION_REFERENCE"], array($AR_keyId, $gi, $refId), CSV_FIELD_SEPARATOR);
+    fputcsv($Fhandles["ANNOTATION_REFERENCE"], array($AR_keyId, $accession, $refId), CSV_FIELD_SEPARATOR);
 }
 
 function save_misc_table($category, $id, $content) 
