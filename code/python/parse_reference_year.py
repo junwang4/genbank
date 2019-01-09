@@ -24,9 +24,10 @@ def parse_year():
             for row in csv.reader(fin, delimiter='|'):
                 arr = row
                 journal = arr[-3]
-                if p_patent.match(journal): # we don't want to process patent references
+                skip_patent = False
+                if skip_patent and p_patent.match(journal):
                     continue
-                m = p1.search(journal) or p2.search(journal)
+                m = p1.search(journal) or p2.search(journal) or p_patent.match(journal):
                 year = ""
                 if m:
                     year = m.groups()[0]

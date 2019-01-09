@@ -480,7 +480,7 @@ function create_table($mysqli, $table)
     }
     else if ($table == "Organism_tax") {
         $sql = "CREATE TABLE IF NOT EXISTS " . $table . " (
-            organism_id INT,
+            organism_id VARCHAR(50),
             tax_id INT,
             INDEX (tax_id),
             PRIMARY KEY(organism_id)

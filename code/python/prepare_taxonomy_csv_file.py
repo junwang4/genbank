@@ -177,7 +177,7 @@ def update_annotation_csv_with_tax_id_column():
 
 
 if __name__ == "__main__":
-    update_annotation_csv_with_tax_id_column()
-    #gen_taxonomy_csv_files(task='create_TAXDIVISION_csv')
-    #gen_taxonomy_csv_files(task='create_TAXNODE_csv')
+    gen_taxonomy_csv_files(task='create_TAXDIVISION_csv')
+    gen_taxonomy_csv_files(task='create_TAXNODE_csv')
+    #update_annotation_csv_with_tax_id_column()
     #generate_new_organism_csv()  # after gen_taxonomy_csv_files(..)
