@@ -27,7 +27,7 @@ def parse_year():
                 skip_patent = False
                 if skip_patent and p_patent.match(journal):
                     continue
-                m = p1.search(journal) or p2.search(journal) or p_patent.match(journal):
+                m = p1.search(journal) or p2.search(journal) or p_patent.match(journal)
                 year = ""
                 if m:
                     year = m.groups()[0]
