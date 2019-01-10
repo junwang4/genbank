@@ -5,7 +5,6 @@ debug = False
 
 config = configparser.ConfigParser()
 config.read('py.conf')
-#config.read('./python/py.conf')
 
 config_option = "DEFAULT"
 
@@ -13,10 +12,7 @@ csv_dir = config.get(config_option, 'csv_dir')
 taxonomy_dir = config.get(config_option, 'taxonomy_dir')
 print(f"csv_dir: {csv_dir}\ntaxonomy_dir: {taxonomy_dir}\n")
 
-#sys.exit()
-
 def gen_taxonomy_csv_files(task):
-
     id_name = {}
     id_uniquename = {}
     def read_names():
@@ -25,7 +21,7 @@ def gen_taxonomy_csv_files(task):
         cnt = 0
         maxL = 0
         for line in open(file_dmp_names, 'r').readlines():
-            tax_id, name, unique_name, name_class, foo = [x.strip() for x in line.split('|')]
+            tax_id, name, unique_name, name_class, _ = [x.strip() for x in line.split('|')]
             if not name_class == "scientific name":
                 continue
             #out.append("%s|%s" % (tax_id, name))
@@ -33,21 +29,22 @@ def gen_taxonomy_csv_files(task):
             id_uniquename[tax_id] = unique_name
             if len(name) > maxL: maxL = len(name)
             cnt += 1
-            if debug and cnt > 100: break
+            #if debug and cnt > 100: break
         print('max length: ', maxL )
         print(len(id_name.keys()))
         print(len(id_uniquename.keys()))
-        #return id_name
 
     def write_csv_for_nodes():
-        #id_name = read_names()
         read_names()
         file_dmp_nodes = "%s/nodes.dmp" % taxonomy_dir
         file_csv_nodes = "%s/TAXNODE.csv" % csv_dir
         cnt = 0 
         out = []
         for line in open(file_dmp_nodes, 'r').readlines():
-            row = line.replace("\t", "")[:-2].split("|")
+            # the last columns is empty, and "taxonomy/readme.txt" only mentions 13 columns
+            # the second to last column (which is "comment") is also empty for all records
+            row = [x.strip() for x in line.split('|')][:-1]
+
             id, pid = row[0], row[1]
             name, unique_name, pname = id_name[id], id_uniquename[id], id_name[pid]
             new_row = [id, name, unique_name, pid, pname]
@@ -84,16 +81,19 @@ def generate_new_organism_csv():
             name_id[node_name] = node_id
             if node_name not in name_shared_uniquenames: name_shared_uniquenames[node_name] = []
             name_shared_uniquenames[node_name].append(unique_name)
+            if 0 and len(name_shared_uniquenames[node_name]) > 1: # for example, Proboscidea: ['Proboscidea <mammal>', 'Proboscidea <plant>'] 
+                print(node_name, name_shared_uniquenames[node_name])
+                sys.exit()
             id_parentId[node_id] = parent_id
             id_rank[node_id] = rank
 
     def gen_new_organism_csv():
         read_taxonomy_csv()
-        csvfile = open("%s/ORGANISM.csv" % csv_dir)
         out = []
         out_org_tax = []
         already_processed = {}
         weird_species_name_cnt = {}
+        csvfile = open("%s/ORGANISM.csv" % csv_dir)
         for row in csv.reader(csvfile, delimiter='|', quotechar='"'):
         #139189705|"marine metagenome    unclassified sequences; metagenomes; ecological metagenomes."
             organism_id, content = row
@@ -102,7 +102,7 @@ def generate_new_organism_csv():
                 if species in name_shared_uniquenames and len(name_shared_uniquenames[species]) > 1:
                     print("shared weird name:", row, name_shared_uniquenames[species])
                     weird_species_name_cnt[species] = weird_species_name_cnt.get(species, 0) +1
-                    continue
+                    #continue
             except:
                 print("tab key wrong")
                 print(content)
@@ -114,7 +114,6 @@ def generate_new_organism_csv():
             seq_order = re.sub('\s+', ' ', seq_order[:-1])
             parents = seq_order.split('; ')
             top_parent_size, bottom_parent_size = 3, 3
-
 
             for direction in (1, -1):
                 if direction == -1:
@@ -177,7 +176,7 @@ def update_annotation_csv_with_tax_id_column():
 
 
 if __name__ == "__main__":
-    gen_taxonomy_csv_files(task='create_TAXDIVISION_csv')
-    gen_taxonomy_csv_files(task='create_TAXNODE_csv')
+    #gen_taxonomy_csv_files(task='create_TAXDIVISION_csv')
+    #gen_taxonomy_csv_files(task='create_TAXNODE_csv')
+    generate_new_organism_csv()  # must be after gen_taxonomy_csv_files(..)
     #update_annotation_csv_with_tax_id_column()
-    #generate_new_organism_csv()  # after gen_taxonomy_csv_files(..)
