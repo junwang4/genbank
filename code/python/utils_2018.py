@@ -222,7 +222,10 @@ def post_request(fpath_out, ids):
     ids_str = ','.join(ids)
     from urllib import request, parse
     url = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi"
-    data = {'db': 'pubmed',  'id': ids_str}
+
+    #data = {'db': 'pubmed',  'id': ids_str}
+    data = {'db': 'pubmed', 'retmode':'xml', 'id': ids_str}
+
     data = parse.urlencode(data).encode()
     req =  request.Request(url, data=data) # this will make the method "POST"
     resp = request.urlopen(req)
@@ -242,11 +245,13 @@ def fetch_pubmed_author_etc_info():
         if end>total_cnt:
             end = total_cnt
         ids_1w = ids_all[start:end]
-        fpath_out = f"pubmed_300k/{start}-{end-1}.dat"
+        #fpath_out = f"pubmed_300k/{start}-{end-1}.dat"
+        fpath_out = f"pubmed_300k/{start}-{end-1}.xml"
         if os.path.exists(fpath_out): continue
         print(fpath_out)
         #continue
         post_request(fpath_out, ids_1w)
+        #break
 
 def main():
     tic = time.time()
