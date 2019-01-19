@@ -218,6 +218,36 @@ def statistics_author_name():
         for name, freq in sorted(name_freq.items(), key=lambda x:x[1], reverse=True):
             fout.write(f"{freq} {name}\n")
 
+def post_request(fpath_out, ids):
+    ids_str = ','.join(ids)
+    from urllib import request, parse
+    url = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi"
+    data = {'db': 'pubmed',  'id': ids_str}
+    data = parse.urlencode(data).encode()
+    req =  request.Request(url, data=data) # this will make the method "POST"
+    resp = request.urlopen(req)
+    result = resp.read().decode('utf-8')
+    with open(fpath_out, 'w') as fout:
+        fout.write(result)
+
+def fetch_pubmed_author_etc_info():
+    #get_pubmed_ids
+    # mysql> SELECT DISTINCT pubmed FROM RefPublication WHERE pubmed IS NOT NULL INTO OUTFILE '/tmp/a.csv' LINES TERMINATED BY '\n';
+    ids_all = [line.strip() for line in open('pubmed_ids.dat').readlines()]
+    total_cnt = len(ids_all)
+    print(total_cnt)
+    span = 10000
+    for start in range(0, total_cnt, span):
+        end = start+span
+        if end>total_cnt:
+            end = total_cnt
+        ids_1w = ids_all[start:end]
+        fpath_out = f"pubmed_300k/{start}-{end-1}.dat"
+        if os.path.exists(fpath_out): continue
+        print(fpath_out)
+        #continue
+        post_request(fpath_out, ids_1w)
+
 def main():
     tic = time.time()
 
@@ -229,7 +259,9 @@ def main():
     #check_uniqueness_of_accession_number_2018()
 
     #compress_patent_references()
-    statistics_author_name()
+    #statistics_author_name()
+    
+    fetch_pubmed_author_etc_info()
 
     print(f'time: {time.time()-tic:.1f}s')
 
