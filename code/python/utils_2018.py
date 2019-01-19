@@ -1,4 +1,4 @@
-import re, os, time, glob
+import re, os, time, glob, csv
 import numpy as np
 import socket
 
@@ -142,6 +142,82 @@ def check_uniqueness_of_accession_number_2018():
             else:
                 hash[accession] = 1
 
+def compress_patent_references():
+    csv_folder = f"{DATA_ROOT}/csv"
+    fpath_ref = f"{csv_folder}/REFERENCE_with_year.csv"
+    fpath_ref_patent_out = f"{csv_folder}/REFERENCE_PATENT.csv"
+    p_patent = re.compile(r'^Patent:\s.*?\s[0-3]\d-[A-Z][A-Z][A-Z]-((?:19|20)\d\d)')
+    cnt = 0
+    pat_freq = {}
+    author_title_freq = {}
+    fpath_ref_patent_out = f"{csv_folder}/REFERENCE_PATENT.csv"
+    fout = open(fpath_ref_patent_out, 'w')
+    csv_writer = csv.writer(fout, delimiter='|')
+
+    journal_index = -4 if fpath_ref.find('_with_year')>=0 else -3
+    with open(fpath_ref) as fin: 
+        for row in csv.reader(fin, delimiter='|'):
+            cnt += 1
+            #if cnt>1000000: break
+            journal = row[journal_index]
+            if not p_patent.match(journal):
+                continue
+            f0, f1, f2, _ = journal.split(' ', 3)
+            pat = f"{f0} {f1} {f2}"
+
+            if not pat in pat_freq:
+                csv_writer.writerow(row)
+            pat_freq[pat] = pat_freq.get(pat, 0) +1 
+
+            if 0:
+                authors = row[2] 
+                title = row[4] 
+                author_title = f"{authors}|{title}"
+                author_title_freq[author_title] = author_title_freq.get(author_title, 0) +1
+        
+    if 0:
+        with open('pat_authortitle.tmp', 'w') as fout:
+            for pat, freq in sorted(author_title_freq.items(), key=lambda x:x[1], reverse=True):
+                fout.write(f'{freq} {pat}\n')
+        with open('pat.tmp', 'w') as fout:
+            for pat, freq in sorted(pat_freq.items(), key=lambda x:x[1], reverse=True):
+                fout.write(f'{freq} {pat}\n')
+
+
+def statistics_author_name():
+    reftype = 'RefPatent'
+    reftype = 'RefDirectSubmission'
+    reftype = 'RefPublication'
+
+    fname = f'authors_{reftype}.dat'
+    name_freq = {}
+    for line in open(fname):
+        p2 = 0
+        has_2_ands = 0
+        if line.find(' and ')>=0:
+            try:
+                p1, p2 = line.strip().split(' and ')
+            except:
+                #print(line)
+                p1, p2 = line.strip().split(' and ', 1)
+                has_2_ands = 1
+        else:
+            p1 = line.strip()
+        names = p1.split(', ')
+        if p2:
+            if not has_2_ands:
+                names = names + [p2]
+            else:
+                print(p2)
+                names = names + p2.split(' and ')
+        for name in names:
+            name = name.upper()
+            name_freq[name] = name_freq.get(name, 0) +1
+    fname_out = f'namefreq_{reftype}.dat'
+    with open(fname_out, 'w') as fout:
+        for name, freq in sorted(name_freq.items(), key=lambda x:x[1], reverse=True):
+            fout.write(f"{freq} {name}\n")
+
 def main():
     tic = time.time()
 
@@ -150,7 +226,10 @@ def main():
     #check_uniqueness_of_accession_number_2013()
 
     #get_2018_accession_only()
-    check_uniqueness_of_accession_number_2018()
+    #check_uniqueness_of_accession_number_2018()
+
+    #compress_patent_references()
+    statistics_author_name()
 
     print(f'time: {time.time()-tic:.1f}s')
 

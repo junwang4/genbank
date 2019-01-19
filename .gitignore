@@ -2,7 +2,6 @@ code/genbank.conf
 code/python/py.conf
 
 
-#data
 data/ftp-index.*
 data/ann_gz
 data/csv
