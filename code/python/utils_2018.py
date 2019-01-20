@@ -253,6 +253,50 @@ def fetch_pubmed_author_etc_info():
         post_request(fpath_out, ids_1w)
         #break
 
+def parse_pubmed_author_etc_info():
+    import xmltodict
+    import pandas as pd
+    folder_xml = f"{DATA_ROOT}/pubmed_300k" 
+    #for fpath in glob.glob(f'{folder_xml}/a*.xml'):
+    for fpath in glob.glob(f'{folder_xml}/*-*.xml'):
+        print(fpath)
+        fout = fpath.replace('.xml', '.csv')
+        xmlData = xmltodict.parse(open(fpath).read())
+        articles = xmlData['PubmedArticleSet']['PubmedArticle']
+
+        out = []
+        article_errors = 0
+        for article in articles:
+            
+          try:
+            authors = article['MedlineCitation']['Article']['AuthorList']['Author']
+            pmid = article['MedlineCitation']['PMID']['#text']
+
+            aff = ""
+            if not isinstance(authors, list):
+                authors = [authors]
+            for au in authors:
+                if 'ForeName' in au:
+                    name = f"{au['LastName']}, {au['ForeName']}"
+                    #name = f"{au['LastName']}, {au['Initials']}"
+                else:
+                    name = au['LastName']
+                row = {'name': name, 'pmid':pmid, 'affiliation':'', 'confidence':0}
+                if 'AffiliationInfo' in au:
+                    aff = au['AffiliationInfo']['Affiliation']
+                    row['affiliation'] = aff
+                    row['confidence'] = 1
+                else:
+                    row['affiliation'] = aff
+                out.append(row)
+          except:
+            article_errors +=1
+            #print(article)
+        pd.DataFrame(out)['name confidence affiliation pmid'.split()].to_csv(fout, index=False)
+        #break
+    print(f'article_errors: {article_errors}')
+
+
 def main():
     tic = time.time()
 
@@ -266,7 +310,8 @@ def main():
     #compress_patent_references()
     #statistics_author_name()
     
-    fetch_pubmed_author_etc_info()
+    #fetch_pubmed_author_etc_info()
+    parse_pubmed_author_etc_info()
 
     print(f'time: {time.time()-tic:.1f}s')
 
