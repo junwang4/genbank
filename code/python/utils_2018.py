@@ -1,4 +1,4 @@
-import re, os, time, glob, csv
+import re, os, time, glob, csv, re
 import numpy as np
 import socket
 
@@ -235,8 +235,12 @@ def post_request(fpath_out, ids):
 
 def fetch_pubmed_author_etc_info():
     #get_pubmed_ids
+    p = re.compile(r'^\d\d\d\d+$')
+    # note that some pubmed is: Patent: JP 2016509572-A 1 31-MAR-2016;\ PRONAI THER
     # mysql> SELECT DISTINCT pubmed FROM RefPublication WHERE pubmed IS NOT NULL INTO OUTFILE '/tmp/a.csv' LINES TERMINATED BY '\n';
-    ids_all = [line.strip() for line in open('pubmed_ids.dat').readlines()]
+
+    #ids_all = [line.strip() for line in open('pubmed_ids.dat').readlines()]
+    ids_all = [line.strip() for line in open('pubmed_ids.dat').readlines() if p.match(line.strip())]
     total_cnt = len(ids_all)
     print(total_cnt)
     span = 10000
@@ -245,8 +249,9 @@ def fetch_pubmed_author_etc_info():
         if end>total_cnt:
             end = total_cnt
         ids_1w = ids_all[start:end]
-        #fpath_out = f"pubmed_300k/{start}-{end-1}.dat"
-        fpath_out = f"pubmed_300k/{start}-{end-1}.xml"
+        
+        outfolder = '/home/data/genbank2018/pubmed_300k'
+        fpath_out = f"{outfolder}/{start}-{end-1}.xml"
         if os.path.exists(fpath_out): continue
         print(fpath_out)
         #continue
@@ -261,6 +266,7 @@ def parse_pubmed_author_etc_info():
     for fpath in glob.glob(f'{folder_xml}/*-*.xml'):
         print(fpath)
         fout = fpath.replace('.xml', '.csv')
+        if os.path.exists(fout): continue
         xmlData = xmltodict.parse(open(fpath).read())
         articles = xmlData['PubmedArticleSet']['PubmedArticle']
 
@@ -310,7 +316,7 @@ def main():
     #compress_patent_references()
     #statistics_author_name()
     
-    #fetch_pubmed_author_etc_info()
+    fetch_pubmed_author_etc_info()
     parse_pubmed_author_etc_info()
 
     print(f'time: {time.time()-tic:.1f}s')
