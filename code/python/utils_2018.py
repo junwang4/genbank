@@ -1,5 +1,6 @@
 import re, os, time, glob, csv, re
 import numpy as np
+import pandas as pd
 import socket
 
 if socket.gethostname().find('metadatalab')>=0:
@@ -260,7 +261,6 @@ def fetch_pubmed_author_etc_info():
 
 def parse_pubmed_author_etc_info():
     import xmltodict
-    import pandas as pd
     folder_xml = f"{DATA_ROOT}/pubmed_300k" 
     #for fpath in glob.glob(f'{folder_xml}/a*.xml'):
     for fpath in glob.glob(f'{folder_xml}/*-*.xml'):
@@ -302,6 +302,22 @@ def parse_pubmed_author_etc_info():
         #break
     print(f'article_errors: {article_errors}')
 
+def statistics_pubmed_author_name():
+    folder_pubmed = f"{DATA_ROOT}/pubmed_300k" 
+    name_freq = {}
+    name_cnt = 0
+    for fpath in glob.glob(f'{folder_pubmed}/*-*.csv'):
+        df = pd.read_csv(fpath, usecols=['name'])
+        for name in df['name'].tolist():
+            name_freq[name] = name_freq.get(name, 0) +1
+            name_cnt += 1
+    out = []
+    for name, freq in sorted(name_freq.items(), key=lambda x:x[1], reverse=True):
+        out.append({"name":name, "freq":freq})
+    pd.DataFrame(out).to_csv('/tmp/name.csv', index=False)
+    print(f'name occurrences: {name_cnt}\ndistinct names: {len(out)}')
+
+
 
 def main():
     tic = time.time()
@@ -316,8 +332,9 @@ def main():
     #compress_patent_references()
     #statistics_author_name()
     
-    fetch_pubmed_author_etc_info()
-    parse_pubmed_author_etc_info()
+    #fetch_pubmed_author_etc_info()
+    #parse_pubmed_author_etc_info()
+    statistics_pubmed_author_name()
 
     print(f'time: {time.time()-tic:.1f}s')
 
