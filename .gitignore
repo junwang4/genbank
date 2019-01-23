@@ -8,6 +8,7 @@ data/csv
 data/tax*
 data/public*
 data/pubmed_300k
+data/patentsview_org
 
 tmp
 python
