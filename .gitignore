@@ -1,5 +1,6 @@
 code/genbank.conf
 code/python/py.conf
+code/python/working
 
 
 data/ftp-index.*
@@ -11,4 +12,3 @@ data/pubmed_300k
 data/patentsview_org
 
 tmp
-python

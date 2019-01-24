@@ -13,6 +13,8 @@ print(f"DATA_ROOT={DATA_ROOT}")
 #url = "ftp://ftp.ncbi.nlm.nih.gov/genbank/gbbct1.seq.gz
 p = re.compile(r'<script>addRow\("(.*?.seq.gz)".*?,"(\d+\.?\d+) MB",')
 
+def tab2comma(s): return s.replace('\t', ',')
+
 def download_seq_gz():
     out = []
     total = 0
@@ -186,11 +188,15 @@ def compress_patent_references():
 
 
 def statistics_author_name():
-    reftype = 'RefPatent'
     reftype = 'RefDirectSubmission'
     reftype = 'RefPublication'
+    reftype, country = 'RefPatent', 'US'
+
+    #SELECT authors,journal FROM RefPatent WHERE authors <> '.' INTO OUTFILE '/tmp/authors_journal.csv' FIELDS TERMINATED BY ',' OPTIONALLY ENCLOSED BY '"' LINES TERMINATED BY '\n';
+    #SELECT authors FROM RefPatent WHERE authors <> '.' AND journal like 'Patent: US%' INTO OUTFILE '/tmp/authors_RefPatent_US.csv' FIELDS TERMINATED BY ',' OPTIONALLY ENCLOSED BY '"' LINES TERMINATED BY '\n';
 
     fname = f'authors_{reftype}.dat'
+
     name_freq = {}
     for line in open(fname):
         p2 = 0
@@ -317,36 +323,43 @@ def statistics_pubmed_author_name():
     pd.DataFrame(out).to_csv('/tmp/name.csv', index=False)
     print(f'name occurrences: {name_cnt}\ndistinct names: {len(out)}')
 
+##############################
+# a group of scripts on exploiting bulk data from http://www.patentsview.org/download/
+#
 def patentsvieworg_process():
     folder = f"{DATA_ROOT}/patentsview_org" 
-    # SELECT DISTINCT journal FROM RefPatent INTO OUTFILE '/tmp/genbank_patent_journal.dat' LINES TERMINATED BY '\n';
-    def patent_extract_patent_number_from_genbank():
+    fpath_csv_genbank_patent_inventor = f'{folder}/genbank_patent_inventor.csv'
+    fpath_csv_genbank_inventor = f'{folder}/genbank_inventor.csv'
+    fpath_csv_genbank_patent_assignee = f'{folder}/genbank_patent_assignee.csv'
+    fpath_csv_genbank_inventor_inventor = f'{folder}/genbank_inventor_inventor.csv'
+    fpath_csv_genbank_inventor_detail = f'{folder}/genbank_inventor_detail.csv'
+
+    def extract_USpatent_number_from_genbank():
+        # SELECT DISTINCT journal FROM RefPatent INTO OUTFILE '/tmp/genbank_patent_journal.dat' LINES TERMINATED BY '\n';
         fpath = f"{folder}/genbank_patent_journal.dat"
+
         p = re.compile(r'Patent: US \(?([0-9,]{5,})[^,0-9]')
         p2 = re.compile(r'Patent: US .*?/([0-9,]{5,})[^,0-9]')
-        #Patent: US 5589355-A 31-DEC-1996;
+        p3 = re.compile(r'Patent: US [^0-9]{,10}([0-9,]{5,})[^,0-9]')
+        # Patent: US 5589355-A 31-DEC-1996;
+        # Patent: US (08/902,087) 29-JUL-1998;
         ids = []
         for line in open(fpath).readlines():
             if not line.startswith('Patent: US'):
                 continue
             line = line.strip()
-            m = p.match(line)
-            patent_id = False
+            m = p.match(line) or p2.match(line) or p3.match(line)
             if m:
                 patent_id = m.groups()[0]
-            else:
-                m = p2.match(line)
-                if m:
-                    patent_id = m.groups()[0]
-                else:
-                    print(line)
-            if patent_id:
                 if patent_id.find(',')>0:
                     patent_id = patent_id.replace(',', '')
                 ids.append(patent_id)
-        print(len(ids))
-        return ids
+            else:
+                print(line)
+        print(f'{len(ids)}, after removing duplicates:', len(set(ids)))
         #open('/tmp/a', 'w').write('\n'.join(ids))
+        return set(ids)
+
 
     def read_patentsview_patent_tsv():
         fpath = f"{folder}/patent_simple.tsv"
@@ -355,21 +368,11 @@ def patentsvieworg_process():
         df['id'] = df['id'].astype('str')
         return set(df['id'].tolist())
         
-    def gen_involved_patent_ids_step1():
-        print('I really dont need this step')
-        return
-        ids_7million = read_patentsview_patent_tsv() # 6.7 million
-        patent_ids = patent_extract_patent_number_from_genbank()
-        ids_matched = [id for id in patent_ids if id in ids_7million]
-        print('matched ids:', len(ids_matched))
-        open(fout_path, 'w').write(' '.join(ids_matched))
 
     def read_patent_inventor_tsv():
-        fin_path = f'{folder}/genbank_patent_inventor.tsv'
-        inventor_patents = {}
-        patent_inventors = {}
-        for line in open(fin_path):
-            patent_id, inventor_id = line.strip().split()
+        df = pd.read_csv(fpath_csv_genbank_patent_inventor, dtype={'patent_id':'str', 'inventor_id':'str'})
+        patent_inventors, inventor_patents = {}, {}
+        for patent_id, inventor_id in zip(df.patent_id, df.inventor_id):
             if inventor_id not in inventor_patents:
                 inventor_patents[inventor_id] = []
             inventor_patents[inventor_id].append(patent_id)
@@ -378,51 +381,56 @@ def patentsvieworg_process():
             patent_inventors[patent_id].append(inventor_id)
         return inventor_patents, patent_inventors
 
-    def gen_involved_inventors_1():
-        patent_ids = patent_extract_patent_number_from_genbank()
-        patent_ids = set(patent_ids)
-        inventor_ids = {}
-        if 0:
-            fout_path = f'{folder}/genbank_patent_inventor.tsv'
-            with open(fout_path, 'w') as fout:
-                for line in open(f'{folder}/patent_inventor.tsv'):
-                    patent_id, inventor_id = line.strip().split()
-                    inventor_ids[inventor_id] = 1
-                    if patent_id in patent_ids:
-                        fout.write(line)
 
-    def gen_involved_inventors_2():
-        inventor_patents, patent_inventors = read_patent_inventor_tsv()
-        if 0:
-            fout_path = f'{folder}/genbank_inventor.tsv'
-            with open(fout_path, 'w') as fout:
-                for line in open(f'{folder}/inventor.tsv'):
-                    try:
-                        inventor_id, name_first, name_last = line.strip().split('\t')
-                        if inventor_id in inventor_patents:
-                            fout.write(line)
-                    except:
-                        print(line.strip())
+    def gen_genbank_patent_inventor_csv():
+        patent_ids = extract_USpatent_number_from_genbank()
+        if 1: # 10 seconds
+            out = []
+            for line in open(f'{folder}/patent_inventor.tsv'):
+                patent_id, inventor_id = line.strip().split()
+                if patent_id in patent_ids:
+                    out.append({'patent_id':patent_id, 'inventor_id':inventor_id})
+            print('cnt:', len(out))
+            pd.DataFrame(out)['patent_id inventor_id'.split()].to_csv(fpath_csv_genbank_patent_inventor, index=False)
 
-    def gen_involved_assignees():
+
+    def gen_genbank_inventor_csv():
         inventor_patents, patent_inventors = read_patent_inventor_tsv()
         if 1:
-            df = pd.read_csv( f'{folder}/assignee.tsv', sep='\t', usecols='id organization'.split() )
-            assignee_id_org = {x:y for x, y in zip(df.id, df.organization)}
+            out = []
+            for line in open(f'{folder}/inventor.tsv'):
+                try:
+                    inventor_id, name_first, name_last = line.strip().split('\t')
+                    if inventor_id in inventor_patents:
+                        out.append({'inventor_id':inventor_id, 'name_first':name_first, 'name_last':name_last})
+                except:
+                    print(line.strip())
+                    inventor_id, name = line.strip().split('\t')
+                    if inventor_id in inventor_patents:
+                        print('- this one needs further processing')
+            pd.DataFrame(out).to_csv(fpath_csv_genbank_inventor, index=False)
 
-            fout_path = f'{folder}/genbank_patent_assignee.tsv'
-            with open(fout_path, 'w') as fout:
-                for line in open(f'{folder}/patent_assignee.tsv'):
-                    try:
-                        pid, aid = line.strip().split('\t')
-                        if pid in patent_inventors:
-                            ll = f'{line.strip()}\t{assignee_id_org[aid]}\n'
-                            fout.write(ll)
-                    except:
-                        print(line.strip())
+
+    def gen_genbank_patent_assignee_csv():
+        inventor_patents, patent_inventors = read_patent_inventor_tsv()
+        if 1:
+            df = pd.read_csv( f'{folder}/assignee.tsv', sep='\t', usecols='id organization'.split(), nrows=999999999 )
+            assignee_id_org = {x:y for x, y in zip(df.id, df.organization)}
+            out = []
+            for line in open(f'{folder}/patent_assignee.tsv'):
+                try:
+                    pid, aid = line.strip().split('\t')
+                    if pid in patent_inventors:
+                        org = assignee_id_org[aid]
+                        out.append({'patent_id':pid, 'assignee_id':aid, 'org':org})
+                except:
+                    #print(line.strip())
+                    pass
+            pd.DataFrame(out)['patent_id assignee_id org'.split()].to_csv(fpath_csv_genbank_patent_assignee, index=False)
+
 
     def read_genbank_patent_assignee():
-        df = pd.read_csv(f'{folder}/genbank_patent_assignee.tsv', sep='\t', header=None, names='pid aid org'.split())
+        df = pd.read_csv(fpath_csv_genbank_patent_assignee, names='pid aid org'.split())
         df.dropna(inplace=True)
         p_orgs = {}
         for p, org in zip(df.pid, df.org):
@@ -432,9 +440,9 @@ def patentsvieworg_process():
         return p_orgs
 
 
-    def gen_inventor_table():
-        df = pd.read_csv( f'{folder}/genbank_inventor.tsv', sep='\t', header=None, names='iid first last'.split())
-        inventor_name = {iid:f'{last}, {first}' for iid, first, last in zip(df['iid'], df['first'], df['last'])}
+    def create_inventor_table():
+        df = pd.read_csv( fpath_csv_genbank_inventor)
+        inventor_name = {iid:f'{last}, {first}' for iid, first, last in zip(df['inventor_id'], df['name_first'], df['name_last'])}
         print(len(inventor_name))
         name_freq = {}
 
@@ -456,48 +464,44 @@ def patentsvieworg_process():
             patents = ' '.join(patent_ids)
             out.append({'inventor_id':i1, 'name':name, 'orgs':orgs, 'patents':patents})
 
-        fout_path = f'{folder}/genbank_inventor_detail.csv'
-        pd.DataFrame(out).to_csv(fout_path, index=False)
+        pd.DataFrame(out).to_csv(fpath_csv_genbank_inventor_detail, index=False)
 
         cnt = 0
         for name, freq in sorted(name_freq.items(), key=lambda x:x[1], reverse=True):
             print(name, freq)
             cnt += 1
-            if cnt>10: break
+            if cnt>20: break
 
 
-
-    def gen_edge_table():
-        fout_path = f'{folder}/genbank_inventor_inventor.csv'
+    def create_edge_table():
         inventor_patents, patent_inventors = read_patent_inventor_tsv()
-
         ii_freq = {}
         for i1, patent_ids in inventor_patents.items():
-            #if not i1=='3974131-3': continue
-            #print(patent_ids)
             for p in patent_ids:
                 for i2 in patent_inventors[p]:
-                    if i1==i2: continue
-                    #if i1>i2: i1, i2 = i2, i1
                     k = f'{i1} {i2}'
-                    #print(p, k)
                     ii_freq[k] = ii_freq.get(k, 0)+1
+        out = []
+        for ii, freq in sorted(ii_freq.items(), key=lambda x:x[1], reverse=True):
+            i1, i2 = ii.split()
+            if i1>=i2:
+                continue # avoid duplicates
+            out.append({'inventor1':i1, 'inventor2':i2, 'count':freq})
+        pd.DataFrame(out)['inventor1 inventor2 count'.split()].to_csv(fpath_csv_genbank_inventor_inventor, index=False)
 
-        with open(fout_path, 'w') as fout:
-            for ii, freq in sorted(ii_freq.items(), key=lambda x:x[1], reverse=True):
-                i1, i2 = ii.split()
-                if i1>i2: continue # avoid duplicates
-                fout.write(f'{ii} {freq}\n')
+
+    def test_subs():
+        patent_ids = extract_USpatent_number_from_genbank()
 
 
-    #gen_involved_patent_ids_step1() # not need this step
+    #test_subs()
 
-    #gen_involved_inventors_1()
-    #gen_involved_inventors_2()
-    #gen_involved_assignees()
+    #gen_genbank_patent_inventor_csv()
+    #gen_genbank_inventor_csv()
+    #gen_genbank_patent_assignee_csv()
 
-    #gen_edge_table()
-    gen_inventor_table()
+    #create_edge_table()
+    create_inventor_table()
 
 
 
@@ -512,13 +516,13 @@ def main():
     #check_uniqueness_of_accession_number_2018()
 
     #compress_patent_references()
-    #statistics_author_name()
+    statistics_author_name()
     
     #fetch_pubmed_author_etc_info()
     #parse_pubmed_author_etc_info()
     #statistics_pubmed_author_name()
 
-    patentsvieworg_process()
+    #patentsvieworg_process()
 
     print(f'time: {time.time()-tic:.1f}s')
 
