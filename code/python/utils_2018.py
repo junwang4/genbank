@@ -192,24 +192,33 @@ def statistics_author_name():
     reftype = 'RefPublication'
     reftype, country = 'RefPatent', 'US'
 
-    #SELECT authors,journal FROM RefPatent WHERE authors <> '.' INTO OUTFILE '/tmp/authors_journal.csv' FIELDS TERMINATED BY ',' OPTIONALLY ENCLOSED BY '"' LINES TERMINATED BY '\n';
+    #SELECT authors,title,journal FROM RefPatent WHERE authors <> '.' INTO OUTFILE '/tmp/authors_title_journal.csv' FIELDS TERMINATED BY ',' OPTIONALLY ENCLOSED BY '"' LINES TERMINATED BY '\n';
     #SELECT authors FROM RefPatent WHERE authors <> '.' AND journal like 'Patent: US%' INTO OUTFILE '/tmp/authors_RefPatent_US.csv' FIELDS TERMINATED BY ',' OPTIONALLY ENCLOSED BY '"' LINES TERMINATED BY '\n';
 
-    fname = f'authors_{reftype}.dat'
+    #fname = f'authors_{reftype}.dat'
+    fname = f'working/patent_authors_title_journal.csv'
+    df = pd.read_csv(fname, escapechar='\\')
+    df.fillna('', inplace=True)
+    print(df.shape)
 
     name_freq = {}
-    for line in open(fname):
+    cnt = 0
+    for authors, journal in zip(df.authors, df.journal):#df.open(fname):
+        if not journal or not journal.startswith('Patent: US'):
+            continue
+        cnt += 1
+        authors = authors.replace('\t', ' ')
+
         p2 = 0
         has_2_ands = 0
-        if line.find(' and ')>=0:
+        if authors.find(' and ') >= 0:
             try:
-                p1, p2 = line.strip().split(' and ')
+                p1, p2 = authors.strip().split(' and ')
             except:
-                #print(line)
-                p1, p2 = line.strip().split(' and ', 1)
+                p1, p2 = authors.strip().split(' and ', 1)
                 has_2_ands = 1
         else:
-            p1 = line.strip()
+            p1 = authors.strip()
         names = p1.split(', ')
         if p2:
             if not has_2_ands:
@@ -220,10 +229,11 @@ def statistics_author_name():
         for name in names:
             name = name.upper()
             name_freq[name] = name_freq.get(name, 0) +1
-    fname_out = f'namefreq_{reftype}.dat'
+    fname_out = f'working/namefreq_{reftype}_{country}.dat'
     with open(fname_out, 'w') as fout:
         for name, freq in sorted(name_freq.items(), key=lambda x:x[1], reverse=True):
             fout.write(f"{freq} {name}\n")
+    print(f'{country} cnt: {cnt}')
 
 def post_request(fpath_out, ids):
     ids_str = ','.join(ids)
@@ -333,6 +343,7 @@ def patentsvieworg_process():
     fpath_csv_genbank_patent_assignee = f'{folder}/genbank_patent_assignee.csv'
     fpath_csv_genbank_inventor_inventor = f'{folder}/genbank_inventor_inventor.csv'
     fpath_csv_genbank_inventor_detail = f'{folder}/genbank_inventor_detail.csv'
+    fpath_csv_genbank_patent_simple = f'{folder}/genbank_patent_simple.csv'
 
     def extract_USpatent_number_from_genbank():
         # SELECT DISTINCT journal FROM RefPatent INTO OUTFILE '/tmp/genbank_patent_journal.dat' LINES TERMINATED BY '\n';
@@ -442,7 +453,11 @@ def patentsvieworg_process():
 
     def create_inventor_table():
         df = pd.read_csv( fpath_csv_genbank_inventor)
-        inventor_name = {iid:f'{last}, {first}' for iid, first, last in zip(df['inventor_id'], df['name_first'], df['name_last'])}
+        use_for_kaggle_winner = 1
+        if use_for_kaggle_winner:
+            inventor_name = {iid:f'{first} {last}' for iid, first, last in zip(df['inventor_id'], df['name_first'], df['name_last'])}
+        else:
+            inventor_name = {iid:f'{last}, {first}' for iid, first, last in zip(df['inventor_id'], df['name_first'], df['name_last'])}
         print(len(inventor_name))
         name_freq = {}
 
@@ -489,6 +504,95 @@ def patentsvieworg_process():
             out.append({'inventor1':i1, 'inventor2':i2, 'count':freq})
         pd.DataFrame(out)['inventor1 inventor2 count'.split()].to_csv(fpath_csv_genbank_inventor_inventor, index=False)
 
+    def build_author_csv_for_kaggle2013_winner_code():
+        threshold = 5
+        def get_top_orgs(orgs):
+            data = json.loads(orgs)
+            ret = []
+            for org, freq in sorted(data.items(), key=lambda x:x[1], reverse=True):
+                if freq>1 or  len(ret) < threshold:
+                    ret.append(org)
+            return '|'.join(ret)
+        def iid2num(iid):
+            part1, part2 = iid.split('-')
+            return int(part1)*100+int(part2)
+
+        df = pd.read_csv(fpath_csv_genbank_inventor_detail, usecols='inventor_id,name,orgs'.split(','))#, nrows=10)
+        df['orgs'] = df.orgs.apply(get_top_orgs)
+
+        df['part2'] = df.inventor_id.apply(lambda x: int(x.split('-')[1]))
+        print(df.part2.value_counts())
+
+        df['inventor_id'] = df.inventor_id.apply(iid2num)
+        df.rename(index=str, columns={'inventor_id':'Id', 'name':'Name', 'orgs':'Affiliation'}, inplace=True)
+        #print(df.Affiliation.tolist())
+        df['Id Name Affiliation'.split()].to_csv('/tmp/Author.csv', index=False)
+        print(df.Id.max(), df.Id.min())
+
+
+    def gen_genbank_patent_simple_csv():
+        inventor_patents, patent_inventors = read_patent_inventor_tsv()
+
+        fpath = f"{folder}/patent_simple.tsv"
+        out = []
+        for line in open(fpath):#, sep='\t'):
+            try:
+                id, type, country, date, title, kind = line.split('\t', 5)
+                if id in patent_inventors:
+                    out.append({'id':id, 'date':date, 'title':title})
+            except:
+                #print(line)
+                pass
+        print('cnt:', len(out))
+        pd.DataFrame(out)['id date title'.split()].to_csv(fpath_csv_genbank_patent_simple, index=False)
+
+        
+    def build_paper_csv_for_kaggle2013_winner_code():
+        df = pd.read_csv(fpath_csv_genbank_patent_simple, dtype={'id':'str'})
+        df.rename(index=str, columns={'id':'Id', 'title':'Title'}, inplace=True)
+        df.fillna('', inplace=True)
+        df['Id'] = df['Id'].apply(lambda x: x if re.match(r'^\d+$', x) else f'zz_{x}')
+        df['Year'] = df['date'].apply(lambda x: x[:4] if re.match(r'^\d\d\d\d', x[:4]) else '0000')
+
+        columns = 'Id,Title,Year,ConferenceId,JournalId,Keyword'.split(',')
+        df['ConferenceId'] = 0
+        df['JournalId'] = 0
+        df['Keyword'] = ''
+        df[columns].to_csv('/tmp/Paper.csv', index=False)
+        #print(df['Year'].value_counts())
+
+
+    def build_paper_author_csv_for_kaggle2013_winner_code():
+        def iid2num(iid):
+            part1, part2 = iid.split('-')
+            return int(part1)*100+int(part2)
+        df = pd.read_csv(fpath_csv_genbank_inventor, dtype={'inventor_id':'str'})
+        iid_name = {iid: f'{fname} {lname}' for iid, fname, lname in zip(df.inventor_id, df.name_first, df.name_last)}
+
+        pid_orgs = {}
+        df = pd.read_csv(fpath_csv_genbank_patent_assignee, dtype={'patent_id':'str'}) # patent_id,assignee_id,org
+        df.fillna('', inplace=True)
+        for pid, org in zip(df.patent_id, df.org):
+            pid_orgs[pid] = (f"{pid_orgs[pid]} | " if pid in pid_orgs and pid_orgs[pid] else '') + org
+
+        df = pd.read_csv(fpath_csv_genbank_patent_inventor, dtype={'patent_id':'str', 'inventor_id':'str'})
+        out = []
+        for pid, iid in zip(df.patent_id, df.inventor_id):
+            if iid in iid_name and pid in pid_orgs:
+                out.append({'PaperId':pid, 'AuthorId':iid, 'Name':iid_name[iid], 'Affiliation':pid_orgs[pid]})
+
+        print(len(out))
+        columns = 'PaperId,AuthorId,Name,Affiliation'.split(',')
+        df = pd.DataFrame(out)[columns]
+        df['AuthorId'] = df['AuthorId'].apply(iid2num)
+        df.to_csv('/tmp/PaperAuthor.csv', index=False)
+
+
+    def build_csv_files_for_kaggle2013_winner_code():
+        build_author_csv_for_kaggle2013_winner_code()
+        build_paper_csv_for_kaggle2013_winner_code()
+        build_paper_author_csv_for_kaggle2013_winner_code()
+
 
     def test_subs():
         patent_ids = extract_USpatent_number_from_genbank()
@@ -496,12 +600,15 @@ def patentsvieworg_process():
 
     #test_subs()
 
+    #gen_genbank_patent_simple_csv()
     #gen_genbank_patent_inventor_csv()
     #gen_genbank_inventor_csv()
     #gen_genbank_patent_assignee_csv()
 
     #create_edge_table()
-    create_inventor_table()
+    #create_inventor_table()
+
+    build_csv_files_for_kaggle2013_winner_code()
 
 
 
@@ -516,13 +623,13 @@ def main():
     #check_uniqueness_of_accession_number_2018()
 
     #compress_patent_references()
-    statistics_author_name()
+    #statistics_author_name()
     
     #fetch_pubmed_author_etc_info()
     #parse_pubmed_author_etc_info()
     #statistics_pubmed_author_name()
 
-    #patentsvieworg_process()
+    patentsvieworg_process()
 
     print(f'time: {time.time()-tic:.1f}s')
 
