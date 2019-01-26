@@ -1,4 +1,5 @@
-import re, os, time, glob, csv, re, json
+import re, os, time, glob, csv, re, json, sys
+from collections import OrderedDict
 import numpy as np
 import pandas as pd
 import socket
@@ -344,6 +345,15 @@ def patentsvieworg_process():
     fpath_csv_genbank_inventor_inventor = f'{folder}/genbank_inventor_inventor.csv'
     fpath_csv_genbank_inventor_detail = f'{folder}/genbank_inventor_detail.csv'
     fpath_csv_genbank_patent_simple = f'{folder}/genbank_patent_simple.csv'
+    fpath_csv_genbank_inventor_detail_disambiguated = f'{folder}/genbank_inventor_detail_disambiguated.csv'
+    fpath_csv_genbank_inventor_inventor_disambiguated = f'{folder}/genbank_inventor_inventor_disambiguated.csv'
+
+    def iid2num(iid):
+        part1, part2 = iid.split('-')
+        return int(part1)*100+int(part2)
+    def num2iid(num):
+        s = str(num)
+        return f'{s[:-2]}-{int(s[-2:])}'
 
     def extract_USpatent_number_from_genbank():
         # SELECT DISTINCT journal FROM RefPatent INTO OUTFILE '/tmp/genbank_patent_journal.dat' LINES TERMINATED BY '\n';
@@ -380,13 +390,24 @@ def patentsvieworg_process():
         return set(df['id'].tolist())
         
 
-    def read_patent_inventor_tsv():
+    def read_patent_inventor_tsv(use_disambiguated=False):
+        if use_disambiguated:
+            df = pd.read_csv(fpath_csv_genbank_inventor_detail_disambiguated, usecols='inventor_id inventor_ids'.split())
+            iid_iid = {}
+            for iid, iids in zip(df.inventor_id, df.inventor_ids):
+                for iid_ in iids.split():
+                    iid_iid[iid_] = iid
+
         df = pd.read_csv(fpath_csv_genbank_patent_inventor, dtype={'patent_id':'str', 'inventor_id':'str'})
         patent_inventors, inventor_patents = {}, {}
         for patent_id, inventor_id in zip(df.patent_id, df.inventor_id):
+            if use_disambiguated:
+                inventor_id = iid_iid[inventor_id]
+
             if inventor_id not in inventor_patents:
                 inventor_patents[inventor_id] = []
             inventor_patents[inventor_id].append(patent_id)
+
             if patent_id not in patent_inventors:
                 patent_inventors[patent_id] = []
             patent_inventors[patent_id].append(inventor_id)
@@ -488,8 +509,14 @@ def patentsvieworg_process():
             if cnt>20: break
 
 
-    def create_edge_table():
-        inventor_patents, patent_inventors = read_patent_inventor_tsv()
+
+    def create_edge_table(use_disambiguated=False):
+        if use_disambiguated:
+            fout_csv = fpath_csv_genbank_inventor_inventor_disambiguated
+        else:
+            fout_csv = fpath_csv_genbank_inventor_inventor
+        inventor_patents, patent_inventors = read_patent_inventor_tsv(use_disambiguated)
+
         ii_freq = {}
         for i1, patent_ids in inventor_patents.items():
             for p in patent_ids:
@@ -502,7 +529,8 @@ def patentsvieworg_process():
             if i1>=i2:
                 continue # avoid duplicates
             out.append({'inventor1':i1, 'inventor2':i2, 'count':freq})
-        pd.DataFrame(out)['inventor1 inventor2 count'.split()].to_csv(fpath_csv_genbank_inventor_inventor, index=False)
+        pd.DataFrame(out)['inventor1 inventor2 count'.split()].to_csv(fout_csv, index=False)
+
 
     def build_author_csv_for_kaggle2013_winner_code():
         threshold = 5
@@ -513,9 +541,6 @@ def patentsvieworg_process():
                 if freq>1 or  len(ret) < threshold:
                     ret.append(org)
             return '|'.join(ret)
-        def iid2num(iid):
-            part1, part2 = iid.split('-')
-            return int(part1)*100+int(part2)
 
         df = pd.read_csv(fpath_csv_genbank_inventor_detail, usecols='inventor_id,name,orgs'.split(','))#, nrows=10)
         df['orgs'] = df.orgs.apply(get_top_orgs)
@@ -588,10 +613,48 @@ def patentsvieworg_process():
         df.to_csv('/tmp/PaperAuthor.csv', index=False)
 
 
-    def build_csv_files_for_kaggle2013_winner_code():
+    def build_csv_files_for_kaggle2013_winning_code():
         build_author_csv_for_kaggle2013_winner_code()
         build_paper_csv_for_kaggle2013_winner_code()
         build_paper_author_csv_for_kaggle2013_winner_code()
+
+
+    def aggregate_orgs(orgs_json_list):
+        org_cnt_new = {}
+        for orgs_json in orgs_json_list:
+            for org, cnt in json.loads(orgs_json).items():
+                org_cnt_new[org] = org_cnt_new.get(org, 0) + cnt
+        return json.dumps(OrderedDict([(org, cnt) for org, cnt in sorted(org_cnt_new.items(), key=lambda x:x[1], reverse=True)]))
+
+
+    def merge_genbank_inventors_with_kaggle2013_result():
+        fpath_csv_kaggle_result = f'{folder}/kaggle_taiwan/results_main1/pre_final.csv'
+        df = pd.read_csv(fpath_csv_kaggle_result)
+        df['inventor_id'] = df['AuthorId'].apply(num2iid)
+        df['dup_ids'] = df.DuplicateAuthorIds.apply(lambda x: ' '.join([num2iid(e) for e in sorted(x.split())]))
+        # AuthorId,DuplicateAuthorIds // 485763705,485763705 397413103
+        iid_dupids = { iid : dup_ids for iid, dup_ids in zip(df.inventor_id, df.dup_ids)}
+        print(str(iid_dupids)[:150])
+        
+        df = pd.read_csv(fpath_csv_genbank_inventor_detail) # inventor_id, name, orgs, patents
+        iid_name = { iid : name for iid, name in zip(df.inventor_id, df.name)}
+        iid_orgs = { iid : orgs for iid, orgs in zip(df.inventor_id, df.orgs)}
+        iid_patents = { iid : patents for iid, patents in zip(df.inventor_id, df.patents)}
+        df['inventor_ids'] = df['inventor_id'].apply(lambda x:iid_dupids[x])
+        df['names'] = df['inventor_ids'].apply(lambda x: ';'.join([iid_name[iid] for iid in x.split()]))
+        df['orgs'] = df['inventor_ids'].apply(lambda x: aggregate_orgs([iid_orgs[iid] for iid in x.split()]))
+        #df['patents'] = df['inventor_ids'].apply(lambda x: [patent for iid in x.split() for patent in iid_patents[iid].split()])
+        df['patents'] = df['inventor_ids'].apply(lambda x: ' '.join(sum([iid_patents[iid].split() for iid in x.split()], [])))
+        df.drop_duplicates(subset=['inventor_ids'], inplace=True)
+        print(df.shape)
+
+        cols = 'inventor_id inventor_ids name names orgs patents'.split()
+        cols = 'inventor_id inventor_ids names orgs patents'.split()
+        df[cols].to_csv(fpath_csv_genbank_inventor_detail_disambiguated, index=False)
+        
+
+    def create_edge_table_after_author_disambiguation(use_disambiguated=True):
+        create_edge_table(use_disambiguated=True)
 
 
     def test_subs():
@@ -608,7 +671,10 @@ def patentsvieworg_process():
     #create_edge_table()
     #create_inventor_table()
 
-    build_csv_files_for_kaggle2013_winner_code()
+    #build_csv_files_for_kaggle2013_winning_code()
+
+    #merge_genbank_inventors_with_kaggle2013_result()
+    create_edge_table_after_author_disambiguation()
 
 
 
@@ -629,9 +695,10 @@ def main():
     #parse_pubmed_author_etc_info()
     #statistics_pubmed_author_name()
 
-    patentsvieworg_process()
+    patentsvieworg_process()  # including the part of using the result of running Kaggle2013 winning solution
 
     print(f'time: {time.time()-tic:.1f}s')
+
 
 if __name__ == "__main__":
     main()
