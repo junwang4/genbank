@@ -334,10 +334,125 @@ def statistics_pubmed_author_name():
     pd.DataFrame(out).to_csv('/tmp/name.csv', index=False)
     print(f'name occurrences: {name_cnt}\ndistinct names: {len(out)}')
 
+def extract_pubmed_to_kaggle2013_csv():
+    import xmltodict
+    folder_xml = f"{DATA_ROOT}/pubmed_300k" 
+
+    missing_pubdate, missing_mesh, missing_authors, article_misc_errors = 0, 0, 0, 0
+    out_author, out_paper, out_paperauthor = [], [], []
+    fout_author = f'{folder_xml}/kaggle2013/author.csv'
+    fout_paperauthor = f'{folder_xml}/kaggle2013/paperauthor.csv'
+    fout_paper = f'{folder_xml}/kaggle2013/paper.csv'
+
+    for fpath in glob.glob(f'{folder_xml}/*-*.xml'):
+    #for fpath in glob.glob(f'{folder_xml}/c.xml'):
+        print(fpath)
+        folder, fname = os.path.split(fpath)
+        fstem = fname.split('.')[0]
+
+        #if os.path.exists(fout): continue
+        xmlData = xmltodict.parse(open(fpath).read())
+        articles = xmlData['PubmedArticleSet']['PubmedArticle']
+
+        for article in articles:
+            if 1:
+                if 'PMID' in article['MedlineCitation']:
+                    pmid = article['MedlineCitation']['PMID']['#text']
+                else:
+                    print('- error: missing pmid')
+                    continue
+
+                if 'Article' in  article['MedlineCitation'] and 'ArticleTitle' in article['MedlineCitation']['Article']:
+                    article_title = article['MedlineCitation']['Article']['ArticleTitle']
+                else:
+                    print('missing_article_title:', pmid)
+
+                if 'AuthorList' in article['MedlineCitation']['Article']:
+                    authors = article['MedlineCitation']['Article']['AuthorList']['Author']
+                else:
+                    #print('missing_authors:', pmid)
+                    missing_authors += 1
+                    continue # nothing to do without author 
+
+                journal_year = ''
+                if 1 and 'Journal' in article['MedlineCitation']['Article']:
+                    journal = article['MedlineCitation']['Article']['Journal']
+                    if 'PubDate' in journal['JournalIssue']:
+                        if 'Year' in journal['JournalIssue']['PubDate']:
+                            journal_year = journal['JournalIssue']['PubDate']['Year']
+                        elif 'MedlineDate' in journal['JournalIssue']['PubDate']:
+                            # <MedlineDate>2004 Sep-Oct</MedlineDate>
+                            journal_year = journal['JournalIssue']['PubDate']['MedlineDate'].split()[0]
+                        else:
+                            missing_pubdate += 1
+                            print('missing pubdate/Year:', pmid)
+                    else:
+                        missing_pubdate += 1
+                        print('missing pubdate:', pmid)
+
+                jid = 0
+                if 1 and 'MedlineJournalInfo' in article['MedlineCitation']:
+                    if 'NlmUniqueID' in article['MedlineCitation']['MedlineJournalInfo']:
+                        jid = article['MedlineCitation']['MedlineJournalInfo']['NlmUniqueID']
+    
+                kws = ''
+                if 1 and 'MeshHeadingList' in article['MedlineCitation'] and 'MeshHeading' in article['MedlineCitation']['MeshHeadingList']:
+                    meshterms = article['MedlineCitation']['MeshHeadingList']['MeshHeading']
+                    kws = '|'.join( [mt['DescriptorName']['#text'] for mt in meshterms] )
+                else:
+                    missing_mesh += 1
+                    #print('missing mesh:', pmid)
+    
+                out_paper.append({'Id':pmid, 'Title':article_title, 'Year':journal_year, 'ConferenceId':0, 'JournalId':jid, 'Keyword':kws})
+    
+                aff = ""
+                if not isinstance(authors, list):
+                    authors = [authors]
+                for au_order, au in enumerate(authors):
+                    if 'ForeName' in au:
+                        name = f"{au['ForeName']}, {au['LastName']}"
+                    else:
+                        if 'LastName' in au:
+                            name = au['LastName']
+                        else: # CollectiveName
+                            #print('--', pmid, au)
+                            continue
+                    author_id = int(pmid)*1000+(au_order+1)
+                    row_author = {'Id':author_id, 'Name': name, 'Affiliation':''}
+    
+                    aff = False
+                    if 'AffiliationInfo' in au:
+                        if 'Affiliation' in au['AffiliationInfo']:
+                            aff = au['AffiliationInfo']['Affiliation']
+                        else:
+                            if type(au['AffiliationInfo']) == list:
+                                aff = ' | '.join( [af['Affiliation'] for af in au['AffiliationInfo']] )
+                            else:
+                                aff = ''
+                                print('- weird: ', pmid, au)
+
+                    if aff:
+                        row_author['Affiliation'] = aff
+                    out_author.append(row_author)
+                    out_paperauthor.append( {'PaperId':pmid, 'AuthorId':author_id, 'Name':name, 'Affiliation':row_author['Affiliation']} )
+            else:
+                article_misc_errors +=1
+                print('unknown error:', pmid)
+                #print(article)
+        #break
+    pd.DataFrame(out_author)['Id Name Affiliation'.split()].to_csv(fout_author, index=False)
+    pd.DataFrame(out_paperauthor)['PaperId AuthorId Name Affiliation'.split()].to_csv(fout_paperauthor, index=False)
+    pd.DataFrame(out_paper)['Id Title Year ConferenceId JournalId Keyword'.split()].to_csv(fout_paper, index=False)
+    print(f'article_misc_errors: {article_misc_errors}')
+    print(f'missing_pubdate: {missing_pubdate}   missing_mesh: {missing_mesh}')
+    print(f'missing_authors: {missing_authors}')
+
+
+
 ##############################
 # a group of scripts on exploiting bulk data from http://www.patentsview.org/download/
 #
-def patentsvieworg_process():
+def patentsvieworg_process_and_kaggle2013():
     folder = f"{DATA_ROOT}/patentsview_org" 
     fpath_csv_genbank_patent_inventor = f'{folder}/genbank_patent_inventor.csv'
     fpath_csv_genbank_inventor = f'{folder}/genbank_inventor.csv'
@@ -672,7 +787,6 @@ def patentsvieworg_process():
     #create_inventor_table()
 
     #build_csv_files_for_kaggle2013_winning_code()
-
     #merge_genbank_inventors_with_kaggle2013_result()
     create_edge_table_after_author_disambiguation()
 
@@ -694,8 +808,10 @@ def main():
     #fetch_pubmed_author_etc_info()
     #parse_pubmed_author_etc_info()
     #statistics_pubmed_author_name()
+    extract_pubmed_to_kaggle2013_csv()
 
-    patentsvieworg_process()  # including the part of using the result of running Kaggle2013 winning solution
+    #patentsvieworg_process_and_kaggle2013()  # including the part of using the result of running Kaggle2013 winning solution
+
 
     print(f'time: {time.time()-tic:.1f}s')
 
