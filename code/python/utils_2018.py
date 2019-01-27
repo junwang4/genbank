@@ -398,7 +398,9 @@ def extract_pubmed_to_kaggle2013_csv():
                 kws = ''
                 if 1 and 'MeshHeadingList' in article['MedlineCitation'] and 'MeshHeading' in article['MedlineCitation']['MeshHeadingList']:
                     meshterms = article['MedlineCitation']['MeshHeadingList']['MeshHeading']
-                    kws = '|'.join( [mt['DescriptorName']['#text'] for mt in meshterms] )
+                    if not type(meshterms) == list: 
+                        meshterms = [meshterms]
+                    kws = '|'.join( [mt['DescriptorName']['#text'] for mt in meshterms if 'DescriptorName' in mt] )
                 else:
                     missing_mesh += 1
                     #print('missing mesh:', pmid)
