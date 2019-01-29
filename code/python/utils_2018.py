@@ -386,14 +386,19 @@ def extract_pubmed_to_kaggle2013_csv():
                         else:
                             missing_pubdate += 1
                             print('missing pubdate/Year:', pmid)
+                        if journal_year and journal_year.find('-')>0: # 1993-1994
+                            journal_year = journal_year.split('-')[1]
                     else:
                         missing_pubdate += 1
                         print('missing pubdate:', pmid)
+                        
 
                 jid = 0
                 if 1 and 'MedlineJournalInfo' in article['MedlineCitation']:
                     if 'NlmUniqueID' in article['MedlineCitation']['MedlineJournalInfo']:
                         jid = article['MedlineCitation']['MedlineJournalInfo']['NlmUniqueID']
+                    if jid and jid[-1] == 'R':
+                        jid = jid.replace('R', '999') # it is okay since the range of jid is 7, 8, 9
     
                 kws = ''
                 if 1 and 'MeshHeadingList' in article['MedlineCitation'] and 'MeshHeading' in article['MedlineCitation']['MeshHeadingList']:
@@ -412,7 +417,8 @@ def extract_pubmed_to_kaggle2013_csv():
                     authors = [authors]
                 for au_order, au in enumerate(authors):
                     if 'ForeName' in au:
-                        name = f"{au['ForeName']}, {au['LastName']}"
+                        #name = f"{au['LastName']}, {au['ForeName']}"
+                        name = f"{au['ForeName']} {au['LastName']}"
                     else:
                         if 'LastName' in au:
                             name = au['LastName']
@@ -449,6 +455,54 @@ def extract_pubmed_to_kaggle2013_csv():
     print(f'missing_pubdate: {missing_pubdate}   missing_mesh: {missing_mesh}')
     print(f'missing_authors: {missing_authors}')
 
+def analyze_disambiguated_result():
+    folder = f"{DATA_ROOT}/pubmed_300k/kaggle2013" 
+
+    if 0:
+        fpath_author = f'{folder}/Author.csv'
+        df_author = pd.read_csv(fpath_author) # Id,Name,Affiliation
+        df_author.fillna('', inplace=True)
+        auid_name_aff = {id:f'{name}  {aff}' for id, name, aff in zip(df_author.Id, df_author.Name, df_author.Affiliation)}
+
+    fpath_dup = f'{folder}/final_simplified.csv'
+    fpath_dup = f'{folder}/final_simplified_2.csv'
+    df = pd.read_csv(fpath_dup) # AuthorId,DuplicateAuthorIds
+    df['freq'] = df.DuplicateAuthorIds.apply(lambda x:len(x.split()))
+    dd = df[df.freq>=400]
+    wanted_auids = sum([auids.split() for auids in dd.DuplicateAuthorIds], [])
+    print(len(wanted_auids))
+
+    if 0:
+        out, out_author, out_paper, out_paperauthor = [], [], [], []
+        for auid, dup_ids in zip(dd.AuthorId, dd.DuplicateAuthorIds):
+            out.append(f'\n=== {auid} ===\n')
+            for dup_id in dup_ids.split():
+                dup_id = int(dup_id)
+                name_aff = f'{dup_id} {auid_name_aff[dup_id]}'
+                out.append(name_aff)
+        open('/tmp/a', 'w').write('\n'.join(out))
+
+
+    if 0:
+        df_author[df_author.Id.isin(wanted_auids)].to_csv('/tmp/Author.csv', index=False)
+
+    if 1:
+        fpath = f'{folder}/PaperAuthor.csv'
+        df = pd.read_csv(fpath)
+        df.fillna('', inplace=True)
+        df_ = df[df.AuthorId.isin(wanted_auids)]
+        df_.to_csv('/tmp/PaperAuthor.csv', index=False)
+        #df[df.AuthorId.isin(wanted_auids)].to_csv('/tmp/PaperAuthor.csv', index=False)
+        wanted_pids = df_.PaperId.tolist()
+
+    if 1:
+        fpath = f'{folder}/Paper.csv'
+        df = pd.read_csv(fpath, dtype={'Title':'str', 'Year':'str'})
+        df.fillna('', inplace=True)
+        df[df.Id.isin(wanted_pids)].to_csv('/tmp/Paper.csv', index=False)
+
+    
+    
 
 
 ##############################
@@ -810,7 +864,8 @@ def main():
     #fetch_pubmed_author_etc_info()
     #parse_pubmed_author_etc_info()
     #statistics_pubmed_author_name()
-    extract_pubmed_to_kaggle2013_csv()
+    #extract_pubmed_to_kaggle2013_csv()
+    analyze_disambiguated_result()
 
     #patentsvieworg_process_and_kaggle2013()  # including the part of using the result of running Kaggle2013 winning solution
 
