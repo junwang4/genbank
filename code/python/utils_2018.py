@@ -276,11 +276,11 @@ def fetch_pubmed_author_etc_info():
         post_request(fpath_out, ids_1w)
         #break
 
-def parse_pubmed_author_etc_info():
+def old_parse_pubmed_author_etc_info():
     import xmltodict
     folder_xml = f"{DATA_ROOT}/pubmed_300k" 
-    #for fpath in glob.glob(f'{folder_xml}/a*.xml'):
-    for fpath in glob.glob(f'{folder_xml}/*-*.xml'):
+    for fpath in glob.glob(f'{folder_xml}/a.xml'):
+    #for fpath in glob.glob(f'{folder_xml}/*-*.xml'):
         print(fpath)
         fout = fpath.replace('.xml', '.csv')
         if os.path.exists(fout): continue
@@ -339,10 +339,11 @@ def extract_pubmed_to_kaggle2013_csv():
     folder_xml = f"{DATA_ROOT}/pubmed_300k" 
 
     missing_pubdate, missing_mesh, missing_authors, article_misc_errors = 0, 0, 0, 0
-    out_author, out_paper, out_paperauthor = [], [], []
-    fout_author = f'{folder_xml}/kaggle2013/author.csv'
-    fout_paperauthor = f'{folder_xml}/kaggle2013/paperauthor.csv'
-    fout_paper = f'{folder_xml}/kaggle2013/paper.csv'
+    out_author, out_paper, out_paperauthor, out_paper_SS = [], [], [], []
+    fout_author = f'{folder_xml}/kaggle2013/Author.csv'
+    fout_paperauthor = f'{folder_xml}/kaggle2013/PaperAuthor.csv'
+    fout_paper = f'{folder_xml}/kaggle2013/Paper.csv'
+    fout_paper_for_semanticscholar = f'{folder_xml}/paper_detail.csv'
 
     for fpath in glob.glob(f'{folder_xml}/*-*.xml'):
     #for fpath in glob.glob(f'{folder_xml}/c.xml'):
@@ -362,7 +363,18 @@ def extract_pubmed_to_kaggle2013_csv():
                     print('- error: missing pmid')
                     continue
 
-                if 'Article' in  article['MedlineCitation'] and 'ArticleTitle' in article['MedlineCitation']['Article']:
+                doi = ''
+                if 'PubmedData' in article and 'ArticleIdList' in article['PubmedData']:
+                    ids = article['PubmedData']['ArticleIdList']['ArticleId']
+                    if type(ids) == list:
+                        for id in ids:
+                            #print('---------', id)
+                            if '@IdType' in id and id['@IdType'] == 'doi':
+                                doi = id['#text']
+                                print(doi)
+                                break
+
+                if 'Article' in article['MedlineCitation'] and 'ArticleTitle' in article['MedlineCitation']['Article']:
                     article_title = article['MedlineCitation']['Article']['ArticleTitle']
                 else:
                     print('missing_article_title:', pmid)
@@ -413,15 +425,17 @@ def extract_pubmed_to_kaggle2013_csv():
                 out_paper.append({'Id':pmid, 'Title':article_title, 'Year':journal_year, 'ConferenceId':0, 'JournalId':jid, 'Keyword':kws})
     
                 aff = ""
+                names = []
                 if not isinstance(authors, list):
                     authors = [authors]
                 for au_order, au in enumerate(authors):
                     if 'ForeName' in au:
-                        #name = f"{au['LastName']}, {au['ForeName']}"
                         name = f"{au['ForeName']} {au['LastName']}"
+                        names.append(f"{au['LastName']}, {au['ForeName']}")
                     else:
-                        if 'LastName' in au:
+                        if 'LastName' in au: # weird, some papers only have LastName
                             name = au['LastName']
+                            names.append(name)
                         else: # CollectiveName
                             #print('--', pmid, au)
                             continue
@@ -443,6 +457,8 @@ def extract_pubmed_to_kaggle2013_csv():
                         row_author['Affiliation'] = aff
                     out_author.append(row_author)
                     out_paperauthor.append( {'PaperId':pmid, 'AuthorId':author_id, 'Name':name, 'Affiliation':row_author['Affiliation']} )
+
+                out_paper_SS.append({'pmid':pmid, 'title':article_title, 'year':journal_year, 'doi':doi, 'authors':' ; '.join(names)})
             else:
                 article_misc_errors +=1
                 print('unknown error:', pmid)
@@ -451,31 +467,51 @@ def extract_pubmed_to_kaggle2013_csv():
     pd.DataFrame(out_author)['Id Name Affiliation'.split()].to_csv(fout_author, index=False)
     pd.DataFrame(out_paperauthor)['PaperId AuthorId Name Affiliation'.split()].to_csv(fout_paperauthor, index=False)
     pd.DataFrame(out_paper)['Id Title Year ConferenceId JournalId Keyword'.split()].to_csv(fout_paper, index=False)
+    pd.DataFrame(out_paper_SS)['pmid doi year title authors'.split()].to_csv(fout_paper_for_semanticscholar, index=False)
     print(f'article_misc_errors: {article_misc_errors}')
     print(f'missing_pubdate: {missing_pubdate}   missing_mesh: {missing_mesh}')
     print(f'missing_authors: {missing_authors}')
 
+def check_semanticscholar_pubmed():
+    folder = f"{DATA_ROOT}/pubmed_300k"
+    fpath_paper = f'{folder}/kaggle2013/Paper.csv'
+    df = pd.read_csv(fpath_paper, usecols=['Id', 'Title', 'Year'], dtype={'Id':'str', 'Year':'str'})
+    pmids_genbank = set(df.Id.tolist())
+    genbank_pmid_title = {id:title for id, title in zip(df.Id, df.Title)}
+    genbank_pmid_year = {id:year for id, year in zip(df.Id, df.Year)}
+
+    fpath_pmid_ssid = f'{folder}/pmid_ssid.csv'
+    df = pd.read_csv(fpath_pmid_ssid, usecols=['pmid'], dtype={'pmid':'str'})
+    pmids_ss = set(df.pmid.tolist())
+    fpath_out = f'{folder}/pmids_covered_by_SS.dat'
+    fpath_out2 = f'{folder}/pmids_not_covered_by_SS.dat'
+    with open(fpath_out, 'w') as fout:
+        fout.write('\n'.join([f'{e}' for e in (pmids_genbank & pmids_ss)]))
+    with open(fpath_out2, 'w') as fout:
+        fout.write('\n'.join([f'{e}\t{genbank_pmid_title[e]}\t{genbank_pmid_year[e]}' for e in (pmids_genbank - pmids_ss)]))
+
+
 def analyze_disambiguated_result():
     folder = f"{DATA_ROOT}/pubmed_300k/kaggle2013" 
 
-    if 0:
+    if 1:
         fpath_author = f'{folder}/Author.csv'
         df_author = pd.read_csv(fpath_author) # Id,Name,Affiliation
         df_author.fillna('', inplace=True)
         auid_name_aff = {id:f'{name}  {aff}' for id, name, aff in zip(df_author.Id, df_author.Name, df_author.Affiliation)}
 
     fpath_dup = f'{folder}/final_simplified.csv'
-    fpath_dup = f'{folder}/final_simplified_2.csv'
     df = pd.read_csv(fpath_dup) # AuthorId,DuplicateAuthorIds
     df['freq'] = df.DuplicateAuthorIds.apply(lambda x:len(x.split()))
-    dd = df[df.freq>=400]
+    dd = df[df.freq>=30].sort_values('freq')
+    print(f'names: {len(dd)}')
     wanted_auids = sum([auids.split() for auids in dd.DuplicateAuthorIds], [])
-    print(len(wanted_auids))
+    #print(len(wanted_auids))
 
-    if 0:
+    if 1:
         out, out_author, out_paper, out_paperauthor = [], [], [], []
         for auid, dup_ids in zip(dd.AuthorId, dd.DuplicateAuthorIds):
-            out.append(f'\n=== {auid} ===\n')
+            out.append(f'\n=== {auid} (cnt: {len(dup_ids.split())}) ===\n')
             for dup_id in dup_ids.split():
                 dup_id = int(dup_id)
                 name_aff = f'{dup_id} {auid_name_aff[dup_id]}'
@@ -486,7 +522,7 @@ def analyze_disambiguated_result():
     if 0:
         df_author[df_author.Id.isin(wanted_auids)].to_csv('/tmp/Author.csv', index=False)
 
-    if 1:
+    if 0:
         fpath = f'{folder}/PaperAuthor.csv'
         df = pd.read_csv(fpath)
         df.fillna('', inplace=True)
@@ -495,7 +531,7 @@ def analyze_disambiguated_result():
         #df[df.AuthorId.isin(wanted_auids)].to_csv('/tmp/PaperAuthor.csv', index=False)
         wanted_pids = df_.PaperId.tolist()
 
-    if 1:
+    if 0:
         fpath = f'{folder}/Paper.csv'
         df = pd.read_csv(fpath, dtype={'Title':'str', 'Year':'str'})
         df.fillna('', inplace=True)
@@ -862,10 +898,11 @@ def main():
     #statistics_author_name()
     
     #fetch_pubmed_author_etc_info()
-    #parse_pubmed_author_etc_info()
+    #old_parse_pubmed_author_etc_info()
     #statistics_pubmed_author_name()
-    #extract_pubmed_to_kaggle2013_csv()
-    analyze_disambiguated_result()
+    extract_pubmed_to_kaggle2013_csv()
+    #analyze_disambiguated_result()
+    #check_semanticscholar_pubmed()
 
     #patentsvieworg_process_and_kaggle2013()  # including the part of using the result of running Kaggle2013 winning solution
 
