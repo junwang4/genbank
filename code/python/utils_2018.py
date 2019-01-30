@@ -485,11 +485,43 @@ def check_semanticscholar_pubmed():
     pmids_ss = set(df.pmid.tolist())
     fpath_out = f'{folder}/pmids_covered_by_SS.dat'
     fpath_out2 = f'{folder}/pmids_not_covered_by_SS.dat'
+    covered = pmids_genbank & pmids_ss
+    not_covered = pmids_genbank - pmids_ss
     with open(fpath_out, 'w') as fout:
-        fout.write('\n'.join([f'{e}' for e in (pmids_genbank & pmids_ss)]))
+        fout.write('\n'.join([f'{e}' for e in covered]))
     with open(fpath_out2, 'w') as fout:
-        fout.write('\n'.join([f'{e}\t{genbank_pmid_title[e]}\t{genbank_pmid_year[e]}' for e in (pmids_genbank - pmids_ss)]))
+        fout.write('\n'.join([f'{e}\t{genbank_pmid_title[e]}\t{genbank_pmid_year[e]}' for e in not_covered]))
 
+def check_semanticscholar_36GB_with_pubmed300k():
+    folder = f"{DATA_ROOT}/pubmed_300k/semanticscholar"
+    df = pd.read_csv(f'{folder}/paper_detail_with_doi.csv', usecols='pmid doi'.split())
+    #pmid,doi,year,title,authors
+    genbank_pmid_doi = {pmid:doi for pmid, doi in zip(df.pmid, df.doi)}
+    genbank_ssids = []
+    doi_cnt = 0
+   
+    folder_csv_SS = "/mnt/data/semanticscholar_corpus/csv"
+    #folder_csv_SS = f'{folder}/csv'
+    for fpath in glob.glob(f'{folder_csv_SS}/*.csv'):
+        #pmid,ssid,doi,numInCitations,title,year,journalName
+        df = pd.read_csv(fpath, usecols='pmid ssid doi'.split())
+        df.fillna('', inplace=True)
+        ss_pmid_ssid = {pmid:ssid for pmid, ssid in zip(df.pmid, df.ssid)}
+        ss_doi_ssid = {doi:ssid for doi, ssid in zip(df.doi, df.ssid) if doi and len(doi)>0}
+        for pmid, doi in genbank_pmid_doi.items():
+            ssid = False
+            if pmid in ss_pmid_ssid:
+                ssid = ss_pmid_ssid[pmid]
+            elif doi in ss_doi_ssid:
+                ssid = ss_doi_ssid[doi]
+                doi_cnt += 1
+            if ssid:
+                genbank_ssids.append(ssid)
+    print('doi cnt:', doi_cnt)
+    with open(f'{folder}/ssids.dat', 'w') as fout:
+        fout.write('\n'.join(genbank_ssids))
+
+    
 
 def analyze_disambiguated_result():
     folder = f"{DATA_ROOT}/pubmed_300k/kaggle2013" 
@@ -900,9 +932,10 @@ def main():
     #fetch_pubmed_author_etc_info()
     #old_parse_pubmed_author_etc_info()
     #statistics_pubmed_author_name()
-    extract_pubmed_to_kaggle2013_csv()
+    #extract_pubmed_to_kaggle2013_csv()
     #analyze_disambiguated_result()
     #check_semanticscholar_pubmed()
+    check_semanticscholar_36GB_with_pubmed300k()
 
     #patentsvieworg_process_and_kaggle2013()  # including the part of using the result of running Kaggle2013 winning solution
 
