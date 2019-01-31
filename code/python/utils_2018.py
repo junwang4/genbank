@@ -6,6 +6,8 @@ import socket
 
 if socket.gethostname().find('metadatalab')>=0:
     DATA_ROOT = "/home/data/genbank2018"
+elif socket.gethostname().find('ubuntu')>=0:
+    DATA_ROOT = "/home/jun/work/2018/genbank/data"
 else:
     DATA_ROOT = "/Users/jwang72/git/genbank/data"
 print(f"DATA_ROOT={DATA_ROOT}")
@@ -521,7 +523,79 @@ def check_semanticscholar_36GB_with_pubmed300k():
     with open(f'{folder}/ssids.dat', 'w') as fout:
         fout.write('\n'.join(genbank_ssids))
 
-    
+# this not work, it shows: {"error":"Sorry, an unexpected error occured. Please try again soon."}
+def search_semanticscholar_with_title():
+    import requests
+    headers = {"Accept-Encoding": "gzip", 'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/31.0.1623.0 Safari/537.36', 'Origin': 'https://www.semanticscholar.org', 'content-type':'application/json'}
+    title = "Evolutionary"
+    data = {'authors':[], 'coAuthors':[], 'requireViewablePdf':'false', 'venues':[], 'yearFilter':'', 'publicationTypes':[], 'queryString' : title, 'sort' : '"relevance"', 'page' : '1', 'pageSize' : '10'}
+    url = f"https://www.semanticscholar.org/search?q={title}&sort=relevance"
+    with requests.Session() as session:
+        session.headers.update(headers)
+        session.get(url)
+        print(session)
+        print(session.cookies)
+        time.sleep(2)
+        r = session.post('https://www.semanticscholar.org/api/1/search', data=data)
+        print(r.text)
+
+
+def selenium_browser_search():
+    from selenium import webdriver
+    from selenium.webdriver.common.keys import Keys
+    from selenium.webdriver.common.by import By
+    from selenium.webdriver.support.ui import WebDriverWait
+    from selenium.webdriver.support import expected_conditions as EC
+    from urllib.parse import quote
+    from selenium.webdriver.chrome.options import Options
+    chrome_options = Options()
+    chrome_options.add_argument("--disable-extensions")
+    chrome_options.add_argument("--disable-gpu")
+    chrome_options.add_argument("--headless")
+
+    folder = f"{DATA_ROOT}/pubmed_300k/semanticscholar"
+    folder_cache = f"{DATA_ROOT}/pubmed_300k/semanticscholar/cache"
+    df = pd.read_csv(f'{folder}/../pmids_not_covered_by_SS.dat', sep='\t', header=None, names='pmid title year'.split(), dtype={'year':'str', 'pmid':'str'})
+    df = df.sort_values('year', ascending=False)
+    cnt = 0
+    tic = time.time()
+    for pmid, title in zip(df.pmid, df.title):
+        print(pmid, title)
+        fpath_out = f'{folder_cache}/{pmid}'
+        if os.path.exists(fpath_out):
+            continue
+        title_ = quote(title, safe='')
+        url=f'https://www.semanticscholar.org/search?q={title_}&sort=relevance'
+
+        driver = webdriver.Chrome(options=chrome_options)
+        driver.get(url)
+        try:
+            element = WebDriverWait(driver, 10).until( EC.presence_of_element_located((By.CLASS_NAME, "result-page")))
+            open(fpath_out, 'w').write( driver.page_source )
+        except:
+            print('not found for: ', pmid)
+        finally:
+            driver.quit()
+        cnt += 1
+        time_used = time.time()-tic
+        print(f'time used: {time_used:.1f} seconds. On average: {time_used/cnt:.1f}')
+        if cnt > 10: break
+
+def statistics_selenium():
+    folder = f"{DATA_ROOT}/pubmed_300k/semanticscholar"
+    folder_cache = f"{DATA_ROOT}/pubmed_300k/semanticscholar/cache"
+    cnt, not_found = 0, 0
+    for fpath in glob.glob(f'{folder_cache}/*'):
+        #print(fpath)
+        for line in open(fpath).readlines():
+            if line.find('No Papers Found')>=0:
+                not_found+=1
+                break
+            if line.find('search-result-title')>=0:
+                cnt += 1
+                break
+    print(f'found: {cnt} not_found: {not_found}')
+
 
 def analyze_disambiguated_result():
     folder = f"{DATA_ROOT}/pubmed_300k/kaggle2013" 
@@ -935,7 +1009,10 @@ def main():
     #extract_pubmed_to_kaggle2013_csv()
     #analyze_disambiguated_result()
     #check_semanticscholar_pubmed()
-    check_semanticscholar_36GB_with_pubmed300k()
+    #check_semanticscholar_36GB_with_pubmed300k()
+    #search_semanticscholar_with_title()
+    #selenium_browser_search()
+    statistics_selenium()
 
     #patentsvieworg_process_and_kaggle2013()  # including the part of using the result of running Kaggle2013 winning solution
 
