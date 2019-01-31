@@ -3,11 +3,12 @@ from collections import OrderedDict
 import numpy as np
 import pandas as pd
 import socket
-
+print(socket.gethostname())
 if socket.gethostname().find('metadatalab')>=0:
     DATA_ROOT = "/home/data/genbank2018"
-elif socket.gethostname().find('ubuntu')>=0:
-    DATA_ROOT = "/home/jun/work/2018/genbank/data"
+elif socket.gethostname().find('ubuntu')>=0 or socket.gethostname().find('mining')>=0:
+    #DATA_ROOT = "/home/jun/work/2018/genbank/data"
+    DATA_ROOT = "../../data"
 else:
     DATA_ROOT = "/Users/jwang72/git/genbank/data"
 print(f"DATA_ROOT={DATA_ROOT}")
@@ -494,6 +495,50 @@ def check_semanticscholar_pubmed():
     with open(fpath_out2, 'w') as fout:
         fout.write('\n'.join([f'{e}\t{genbank_pmid_title[e]}\t{genbank_pmid_year[e]}' for e in not_covered]))
 
+def parse_json_obtained_with_SS_api():
+    folder = f"{DATA_ROOT}/pubmed_300k/semanticscholar"
+    folder_json = f"{folder}/json"
+    ssid_authorids = {}
+    authorid_ssids = {}
+    authorid_name = {}
+    auid_auid_freq = {}
+    out_ssid_auid = [] # ssid, authorid
+    for fpath in glob.glob(f'{folder_json}/*'):
+        ssid = fpath.split('/')[-1]
+        data = json.load(open(fpath))
+        if data["responseType"] == "PAPER_DETAIL":
+            paper = data["paper"]
+            authors = paper["authors"]
+            #"authors":[[{"name":"Thomas M. Schultheiss","ids":["3960467"]
+            co_auids = []
+            for au in authors:
+                au = au[0]
+                name = au['name']
+                auids = au['ids']
+                if len(auids) == 0:
+                    print('- error:', ssid, name, auids)
+                    continue
+                if len(auids)>1:
+                    print('- 1+ author ids:', ssid, ' '.join(auids))
+                auid = auids[0]
+                co_auids.append(auid)
+                out_ssid_auid.append({'ssid':ssid, 'author_id':auid, 'name':name})
+                authorid_name[auid] = name
+            for coau1 in co_auids:
+                for coau2 in co_auids:
+                    if int(coau1) < int(coau2):
+                        co_str = f'{coau1} {coau2}'
+                        auid_auid_freq[co_str] = auid_auid_freq.get(co_str, 0) +1
+        #break
+    fpath_out = f'{folder}/ssid_auid_name.csv'
+    df = pd.DataFrame(out_ssid_auid)['ssid author_id name'.split()]
+    df.to_csv(fpath_out, index=False)
+
+    out = [{'author_id1':aa.split()[0], 'author_id2':aa.split()[1], 'count':freq} for aa, freq in auid_auid_freq.items()]
+    fpath_out = f'{folder}/genbank_published_author_author.csv'
+    df = pd.DataFrame(out)
+    df.sort_values('count', ascending=False).to_csv(fpath_out, index=False)
+
 def download_json_with_SS_api():
     folder = f"{DATA_ROOT}/pubmed_300k/semanticscholar"
     folder_json = f"{folder}/json"
@@ -505,7 +550,7 @@ def download_json_with_SS_api():
             cmd = f'wget https://www.semanticscholar.org/api/1/paper/{ssid} -O {dest_json}'
             os.system(cmd)
 
-    for line in open(f'{folder}/ssids.dat').readlines():
+    for cnt, line in enumerate(open(f'{folder}/ssids.dat').readlines()):
         ssid = line.strip()
         dest_json = f'{folder_json}/{ssid}'
         if not os.path.exists(dest_json):
@@ -520,7 +565,7 @@ def download_json_with_SS_api():
                     ssid_new = data['canonicalId']
                     dest_json = f'{folder_json}/{ssid_new}'
                     download_ssid_json(ssid_new, dest_json)
-        #break
+        if cnt>50: break
     
 def check_semanticscholar_36GB_with_pubmed300k():
     folder = f"{DATA_ROOT}/pubmed_300k/semanticscholar"
@@ -1095,7 +1140,8 @@ def main():
     #selenium_browser_search()
     #quick_statistics_selenium()
     #parse_selenium_result()
-    download_json_with_SS_api()
+    #download_json_with_SS_api()
+    parse_json_obtained_with_SS_api()
 
     #patentsvieworg_process_and_kaggle2013()  # including the part of using the result of running Kaggle2013 winning solution
 
