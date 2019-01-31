@@ -548,7 +548,8 @@ def parse_json_obtained_with_SS_api():
     out = [{'author_id':auid, 'name':name, 'ssids':' '.join(authorid_ssids[auid])} for auid, name in authorid_name.items()]
     fpath_out = f'{folder}/genbank_published_author_name.csv'
     df = pd.DataFrame(out)
-    df.sort_values('author_id', ascending=True).to_csv(fpath_out, index=False)
+    df['papers'] = df.ssids.apply(lambda x:len(x.split()))
+    df.sort_values('papers', ascending=False).to_csv(fpath_out, index=False)
 
 def download_json_with_SS_api():
     folder = f"{DATA_ROOT}/pubmed_300k/semanticscholar"
@@ -576,7 +577,7 @@ def download_json_with_SS_api():
                     ssid_new = data['canonicalId']
                     dest_json = f'{folder_json}/{ssid_new}'
                     download_ssid_json(ssid_new, dest_json)
-        if cnt>50: break
+        #if cnt>200: break
     
 def check_semanticscholar_36GB_with_pubmed300k():
     folder = f"{DATA_ROOT}/pubmed_300k/semanticscholar"
@@ -1151,8 +1152,8 @@ def main():
     #selenium_browser_search()
     #quick_statistics_selenium()
     #parse_selenium_result()
-    #download_json_with_SS_api()
-    parse_json_obtained_with_SS_api()
+    download_json_with_SS_api()
+    #parse_json_obtained_with_SS_api()
 
     #patentsvieworg_process_and_kaggle2013()  # including the part of using the result of running Kaggle2013 winning solution
 
