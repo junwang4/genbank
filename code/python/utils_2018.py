@@ -568,7 +568,7 @@ def download_json_with_SS_api():
         if not os.path.exists(dest_json):
             download_ssid_json(ssid, dest_json)
         else:
-            if os.path.getsize(dest_json)>500:
+            if os.path.getsize(dest_json)>500 or os.path.getsize(dest_json)==0:
                 continue
             else:
                 print(ssid, '<smaller than 500>')
@@ -690,6 +690,7 @@ def parse_selenium_result():
     p = re.compile(r'\s*<div id="app">.*?(<article class="search-result">.*?</article>)')
     eqs = 0
     not_found = 0
+    out = ['ssid,name,author_id']
     for fpath in glob.glob(f'{folder_cache}/*'):
         pid = fpath.split('/')[-1]
         title = pmid_title[pid].lower()
@@ -704,9 +705,11 @@ def parse_selenium_result():
                 ti = soup.find('span').text.lower()
                 title = re.sub(r'[^a-z]+','', title)
                 ti= re.sub(r'[^a-z]+','', ti)
-                eq = title[:100]==ti[:100]
+                eq = title[:100]==ti[:100] or title.find(ti)>=0 or ti.find(title)>=0
                 if eq:
                     eqs += 1
+                    ssid_author_id_name_list = get_ssid_and_authorid(soup)
+                    out += ssid_author_id_name_list
                 else:
                     print(f'input:    {title}\nselenium: {ti}\n')
                 break
@@ -714,8 +717,21 @@ def parse_selenium_result():
             not_found+=1
     success = eqs / (eqs+not_found)
     print(f'eqs: {eqs}   not_found: {not_found}   success ratio: {success:.2f}')
+    fout = f"{folder_cache}/../selenium.csv"
+    open(fout, 'w').write('\n'.join(out))
+def get_ssid_and_authorid(s):
+    tmp = s.find_all('a')[0]
+    ssid = tmp.attrs['href'].split('/')[-1]
+    hrefs = [e.attrs['href'] for e in s.find_all('a') if e.attrs['href'].find('author')>=0]
+    #author_id_name_hash = {id:name for name, id in [e.split('/')[-2:] for e in hrefs]}
+    #author_id_name_list = [e.split('/')[-2:] for e in hrefs]
+    return [f"{ssid},{','.join(e.split('/')[-2:])}" for e in hrefs]
+
 '''
 s = BeautifulSoup(open('/tmp/aa').read())                                      
+cc=s.find_all('a')[0]
+cc.attrs['href'].split('/')[-1]
+Out[628]: '05d306cadc7c11bca4b22199e2c6f480f6ee5ab0'
 b = [e.attrs['href'] for e in s.find_all('a') if e.attrs['href'].find('author')>=0]
 {id:name for name, id in [e.split('/')[-2:] for e in b]}
 Out[599]: 
@@ -1151,8 +1167,8 @@ def main():
     #search_semanticscholar_with_title()
     #selenium_browser_search()
     #quick_statistics_selenium()
-    #parse_selenium_result()
-    download_json_with_SS_api()
+    parse_selenium_result()
+    #download_json_with_SS_api()
     #parse_json_obtained_with_SS_api()
 
     #patentsvieworg_process_and_kaggle2013()  # including the part of using the result of running Kaggle2013 winning solution
