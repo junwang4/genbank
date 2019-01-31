@@ -581,7 +581,7 @@ def selenium_browser_search():
         print(f'time used: {time_used:.1f} seconds. On average: {time_used/cnt:.1f}')
         if cnt > 10: break
 
-def statistics_selenium():
+def quick_statistics_selenium():
     folder = f"{DATA_ROOT}/pubmed_300k/semanticscholar"
     folder_cache = f"{DATA_ROOT}/pubmed_300k/semanticscholar/cache"
     cnt, not_found = 0, 0
@@ -596,6 +596,39 @@ def statistics_selenium():
                 break
     print(f'found: {cnt} not_found: {not_found}')
 
+def parse_selenium_result():
+    from bs4 import BeautifulSoup
+    
+    folder_cache = f"{DATA_ROOT}/pubmed_300k/semanticscholar/cache"
+    df = pd.read_csv(f'{folder_cache}/../../pmids_not_covered_by_SS.dat', sep='\t', header=None, names='pmid title year'.split(), dtype={'year':'str', 'pmid':'str'})
+    pmid_title = {pmid:title for pmid, title in zip(df.pmid, df.title)}
+    p = re.compile(r'\s*<div id="app">.*?(<article class="search-result">.*?</article>)')
+    eqs = 0
+    not_found = 0
+    for fpath in glob.glob(f'{folder_cache}/*'):
+        pid = fpath.split('/')[-1]
+        title = pmid_title[pid].lower()
+        found = 0
+        for line in open(fpath).readlines():
+            m = p.match(line)
+            if m:
+                found = 1
+                html = m.groups()[0]
+                #open('/tmp/aa', 'w').write(html)
+                soup = BeautifulSoup(html, features='lxml')
+                ti = soup.find('span').text.lower()
+                title = re.sub(r'[^a-z]+','', title)
+                ti= re.sub(r'[^a-z]+','', ti)
+                eq = title[:100]==ti[:100]
+                if eq:
+                    eqs += 1
+                else:
+                    print(f'input:    {title}\nselenium: {ti}\n')
+                break
+        if not found:
+            not_found+=1
+    success = eqs / (eqs+not_found)
+    print(f'eqs: {eqs}   not_found: {not_found}   success ratio: {success:.2f}')
 
 def analyze_disambiguated_result():
     folder = f"{DATA_ROOT}/pubmed_300k/kaggle2013" 
@@ -1012,7 +1045,8 @@ def main():
     #check_semanticscholar_36GB_with_pubmed300k()
     #search_semanticscholar_with_title()
     #selenium_browser_search()
-    statistics_selenium()
+    #quick_statistics_selenium()
+    parse_selenium_result()
 
     #patentsvieworg_process_and_kaggle2013()  # including the part of using the result of running Kaggle2013 winning solution
 
