@@ -494,6 +494,34 @@ def check_semanticscholar_pubmed():
     with open(fpath_out2, 'w') as fout:
         fout.write('\n'.join([f'{e}\t{genbank_pmid_title[e]}\t{genbank_pmid_year[e]}' for e in not_covered]))
 
+def download_json_with_SS_api():
+    folder = f"{DATA_ROOT}/pubmed_300k/semanticscholar"
+    folder_json = f"{folder}/json"
+
+    # this url (www.semanticscholar.org/api/1/paper/ssid has "structuredAuthors":[{"firstName":"Axel","middleNames":[],"lastName":"Trefzer"},
+    # while (https://api.semanticscholar.org/v1/paper/ssid) not have structured author info
+    def download_ssid_json(ssid, dest_json):
+        if not os.path.exists(dest_json):
+            cmd = f'wget https://www.semanticscholar.org/api/1/paper/{ssid} -O {dest_json}'
+            os.system(cmd)
+
+    for line in open(f'{folder}/ssids.dat').readlines():
+        ssid = line.strip()
+        dest_json = f'{folder_json}/{ssid}'
+        if not os.path.exists(dest_json):
+            download_ssid_json(ssid, dest_json)
+        else:
+            if os.path.getsize(dest_json)>500:
+                continue
+            else:
+                print(ssid, '<smaller than 500>')
+                data = json.load(open(dest_json))
+                if 'canonicalId' in data:
+                    ssid_new = data['canonicalId']
+                    dest_json = f'{folder_json}/{ssid_new}'
+                    download_ssid_json(ssid_new, dest_json)
+        #break
+    
 def check_semanticscholar_36GB_with_pubmed300k():
     folder = f"{DATA_ROOT}/pubmed_300k/semanticscholar"
     df = pd.read_csv(f'{folder}/paper_detail_with_doi.csv', usecols='pmid doi'.split())
@@ -523,7 +551,7 @@ def check_semanticscholar_36GB_with_pubmed300k():
     with open(f'{folder}/ssids.dat', 'w') as fout:
         fout.write('\n'.join(genbank_ssids))
 
-# this not work, it shows: {"error":"Sorry, an unexpected error occured. Please try again soon."}
+# this does not work, it shows: {"error":"Sorry, an unexpected error occured. Please try again soon."}
 def search_semanticscholar_with_title():
     import requests
     headers = {"Accept-Encoding": "gzip", 'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/31.0.1623.0 Safari/537.36', 'Origin': 'https://www.semanticscholar.org', 'content-type':'application/json'}
@@ -629,6 +657,25 @@ def parse_selenium_result():
             not_found+=1
     success = eqs / (eqs+not_found)
     print(f'eqs: {eqs}   not_found: {not_found}   success ratio: {success:.2f}')
+'''
+s = BeautifulSoup(open('/tmp/aa').read())                                      
+b = [e.attrs['href'] for e in s.find_all('a') if e.attrs['href'].find('author')>=0]
+{id:name for name, id in [e.split('/')[-2:] for e in b]}
+Out[599]: 
+{'2230352': 'Tae-Wook-Kim',
+ '4887322': 'Hong-Shik-Oh',
+ '49922800': 'Hwa-Jin-Lee',
+ '7589448': 'Sanghyun-Han',
+ '7652139': 'Yoo-Kyung-Kim'}
+
+[e.split('/')[-2:] for e in b]
+[['Tae-Wook-Kim', '2230352'],
+ ['Hwa-Jin-Lee', '49922800'],
+ ['Yoo-Kyung-Kim', '7652139'],
+ ['Hong-Shik-Oh', '4887322'],
+ ['Sanghyun-Han', '7589448']]
+'''
+    
 
 def analyze_disambiguated_result():
     folder = f"{DATA_ROOT}/pubmed_300k/kaggle2013" 
@@ -1041,12 +1088,14 @@ def main():
     #statistics_pubmed_author_name()
     #extract_pubmed_to_kaggle2013_csv()
     #analyze_disambiguated_result()
+
     #check_semanticscholar_pubmed()
     #check_semanticscholar_36GB_with_pubmed300k()
     #search_semanticscholar_with_title()
     #selenium_browser_search()
     #quick_statistics_selenium()
-    parse_selenium_result()
+    #parse_selenium_result()
+    download_json_with_SS_api()
 
     #patentsvieworg_process_and_kaggle2013()  # including the part of using the result of running Kaggle2013 winning solution
 
