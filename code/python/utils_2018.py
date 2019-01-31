@@ -505,6 +505,9 @@ def parse_json_obtained_with_SS_api():
     out_ssid_auid = [] # ssid, authorid
     for fpath in glob.glob(f'{folder_json}/*'):
         ssid = fpath.split('/')[-1]
+        if os.path.getsize(fpath)==0:  
+            print('- empty file download:', ssid)
+            continue
         data = json.load(open(fpath))
         if data["responseType"] == "PAPER_DETAIL":
             paper = data["paper"]
@@ -524,6 +527,9 @@ def parse_json_obtained_with_SS_api():
                 co_auids.append(auid)
                 out_ssid_auid.append({'ssid':ssid, 'author_id':auid, 'name':name})
                 authorid_name[auid] = name
+                if not auid in authorid_ssids:
+                    authorid_ssids[auid] = []
+                authorid_ssids[auid].append(ssid)
             for coau1 in co_auids:
                 for coau2 in co_auids:
                     if int(coau1) < int(coau2):
@@ -538,6 +544,11 @@ def parse_json_obtained_with_SS_api():
     fpath_out = f'{folder}/genbank_published_author_author.csv'
     df = pd.DataFrame(out)
     df.sort_values('count', ascending=False).to_csv(fpath_out, index=False)
+
+    out = [{'author_id':auid, 'name':name, 'ssids':' '.join(authorid_ssids[auid])} for auid, name in authorid_name.items()]
+    fpath_out = f'{folder}/genbank_published_author_name.csv'
+    df = pd.DataFrame(out)
+    df.sort_values('author_id', ascending=True).to_csv(fpath_out, index=False)
 
 def download_json_with_SS_api():
     folder = f"{DATA_ROOT}/pubmed_300k/semanticscholar"
