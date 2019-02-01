@@ -495,6 +495,43 @@ def check_semanticscholar_pubmed():
     with open(fpath_out2, 'w') as fout:
         fout.write('\n'.join([f'{e}\t{genbank_pmid_title[e]}\t{genbank_pmid_year[e]}' for e in not_covered]))
 
+def gen_author_author_and_author_info_by_merging_two_SS_csv_files():
+    folder = f"{DATA_ROOT}/pubmed_300k/semanticscholar"
+    fpath1 = f'{folder}/SS_api_ssid_auid_name.csv'
+    fpath2 = f'{folder}/SS_selenium.csv'
+    df1 = pd.read_csv(fpath1)
+    df2 = pd.read_csv(fpath2)
+    df = pd.concat((df1, df2))
+    print(df1.shape, df2.shape, df.shape)
+    auid_auid_freq = {}
+    authorid_name = {}
+    authorid_ssids = {}
+    for grp in df.groupby('ssid'):
+        grp = grp[1]
+        co_auids = []
+        for ssid, auid, name in zip(grp.ssid, grp.author_id, grp.name):
+            co_auids.append(auid)
+            authorid_name[auid] = name
+            if not auid in authorid_ssids:
+                authorid_ssids[auid] = []
+            authorid_ssids[auid].append(ssid)
+        for coau1 in co_auids:
+            for coau2 in co_auids:
+                if int(coau1) < int(coau2):
+                    co_str = f'{coau1} {coau2}'
+                    auid_auid_freq[co_str] = auid_auid_freq.get(co_str, 0) +1
+        #break
+    out = [{'author_id1':aa.split()[0], 'author_id2':aa.split()[1], 'count':freq} for aa, freq in auid_auid_freq.items()]
+    fpath_out = f'{folder}/genbank_published_author_author_merged.csv'
+    df = pd.DataFrame(out)
+    df.sort_values('count', ascending=False).to_csv(fpath_out, index=False)
+
+    out = [{'author_id':auid, 'name':name, 'ssids':' '.join(authorid_ssids[auid])} for auid, name in authorid_name.items()]
+    fpath_out = f'{folder}/genbank_published_author_name_merged.csv'
+    df = pd.DataFrame(out)
+    df['papers'] = df.ssids.apply(lambda x:len(x.split()))
+    df.sort_values('papers', ascending=False).to_csv(fpath_out, index=False)
+
 def parse_json_obtained_with_SS_api():
     folder = f"{DATA_ROOT}/pubmed_300k/semanticscholar"
     folder_json = f"{folder}/json"
@@ -536,8 +573,8 @@ def parse_json_obtained_with_SS_api():
                         co_str = f'{coau1} {coau2}'
                         auid_auid_freq[co_str] = auid_auid_freq.get(co_str, 0) +1
         #break
-    fpath_out = f'{folder}/ssid_auid_name.csv'
-    df = pd.DataFrame(out_ssid_auid)['ssid author_id name'.split()]
+    fpath_out = f'{folder}/SS_api_ssid_auid_name.csv'
+    df = pd.DataFrame(out_ssid_auid)['ssid name author_id'.split()]
     df.to_csv(fpath_out, index=False)
 
     out = [{'author_id1':aa.split()[0], 'author_id2':aa.split()[1], 'count':freq} for aa, freq in auid_auid_freq.items()]
@@ -717,7 +754,7 @@ def parse_selenium_result():
             not_found+=1
     success = eqs / (eqs+not_found)
     print(f'eqs: {eqs}   not_found: {not_found}   success ratio: {success:.2f}')
-    fout = f"{folder_cache}/../selenium.csv"
+    fout = f"{folder_cache}/../SS_selenium.csv"
     open(fout, 'w').write('\n'.join(out))
 def get_ssid_and_authorid(s):
     tmp = s.find_all('a')[0]
@@ -1167,9 +1204,10 @@ def main():
     #search_semanticscholar_with_title()
     #selenium_browser_search()
     #quick_statistics_selenium()
-    parse_selenium_result()
+    #parse_selenium_result()
     #download_json_with_SS_api()
     #parse_json_obtained_with_SS_api()
+    gen_author_author_and_author_info_by_merging_two_SS_csv_files()
 
     #patentsvieworg_process_and_kaggle2013()  # including the part of using the result of running Kaggle2013 winning solution
 
