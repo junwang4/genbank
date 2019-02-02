@@ -503,6 +503,8 @@ def gen_author_author_and_author_info_by_merging_two_SS_csv_files():
     df2 = pd.read_csv(fpath2)
     df = pd.concat((df1, df2))
     print(df1.shape, df2.shape, df.shape)
+    print('ssid cnt:', len(df.ssid.unique()))
+
     auid_auid_freq = {}
     authorid_name = {}
     authorid_ssids = {}
@@ -545,7 +547,11 @@ def parse_json_obtained_with_SS_api():
         if os.path.getsize(fpath)==0:  
             print('- empty file download:', ssid)
             continue
-        data = json.load(open(fpath))
+        try:
+            data = json.load(open(fpath))
+        except:
+            print('- bad json format downloaded with SS API:', ssid)
+            continue
         if data["responseType"] == "PAPER_DETAIL":
             paper = data["paper"]
             authors = paper["authors"]
@@ -722,15 +728,26 @@ def parse_selenium_result():
     from bs4 import BeautifulSoup
     
     folder_cache = f"{DATA_ROOT}/pubmed_300k/semanticscholar/cache"
+    fpath_SS_selenium = f"{folder_cache}/../SS_selenium_tmp.csv" # ssid,name,author_id,pmid
+    SS_pmids_already_parsed = {}
+    if os.path.exists(fpath_SS_selenium):
+        df = pd.read_csv(fpath_SS_selenium, dtype={'pmid':'str'})
+        SS_pmids_already_parsed = set(df.pmid.tolist())
+        print(f'rows: {len(df.ssid.tolist()):,}\nssid cnt: {len(SS_pmids_already_parsed):,}')
+
     df = pd.read_csv(f'{folder_cache}/../../pmids_not_covered_by_SS.dat', sep='\t', header=None, names='pmid title year'.split(), dtype={'year':'str', 'pmid':'str'})
     pmid_title = {pmid:title for pmid, title in zip(df.pmid, df.title)}
     p = re.compile(r'\s*<div id="app">.*?(<article class="search-result">.*?</article>)')
-    eqs = 0
+    eqs, title_not_matches = 0, 0
     not_found = 0
-    out = ['ssid,name,author_id']
+    out = ['pmid,ssid,name,author_id']
+    out_processed_pmids = ['pmid,status']
     for fpath in glob.glob(f'{folder_cache}/*'):
-        pid = fpath.split('/')[-1]
-        title = pmid_title[pid].lower()
+        pmid = fpath.split('/')[-1]
+        if pmid in SS_pmids_already_parsed:
+            #print('alread processed:', pmid)
+            continue
+        title = pmid_title[pmid].lower()
         found = 0
         for line in open(fpath).readlines():
             m = p.match(line)
@@ -745,24 +762,30 @@ def parse_selenium_result():
                 eq = title[:100]==ti[:100] or title.find(ti)>=0 or ti.find(title)>=0
                 if eq:
                     eqs += 1
-                    ssid_author_id_name_list = get_ssid_and_authorid(soup)
+                    ssid_author_id_name_list = get_ssid_and_authorid(pmid, soup)
                     out += ssid_author_id_name_list
+                    out_processed_pmids.append(f'{pmid},matched')
                 else:
+                    title_not_matches += 1
                     print(f'input:    {title}\nselenium: {ti}\n')
+                    out_processed_pmids.append(f'{pmid},not_matched')
                 break
         if not found:
             not_found+=1
-    success = eqs / (eqs+not_found)
-    print(f'eqs: {eqs}   not_found: {not_found}   success ratio: {success:.2f}')
-    fout = f"{folder_cache}/../SS_selenium.csv"
-    open(fout, 'w').write('\n'.join(out))
-def get_ssid_and_authorid(s):
+            out_processed_pmids.append(f'{pmid},not_found')
+    success = eqs / (eqs+title_not_matches+not_found)
+    print(f'eqs: {eqs}    title_not_matches: {title_not_matches}     not_found: {not_found}     success ratio: {success:.2f}')
+    fout_SS_selenium = f"{folder_cache}/../SS_selenium_tmp2.csv"
+    open(fout_SS_selenium, 'w').write('\n'.join(out))
+    fout_SS_selenium_status = f"{folder_cache}/../SS_selenium_tmp2_status.csv"
+    open(fout_SS_selenium_status, 'w').write('\n'.join(out_processed_pmids))
+def get_ssid_and_authorid(pmid, s):
     tmp = s.find_all('a')[0]
     ssid = tmp.attrs['href'].split('/')[-1]
     hrefs = [e.attrs['href'] for e in s.find_all('a') if e.attrs['href'].find('author')>=0]
     #author_id_name_hash = {id:name for name, id in [e.split('/')[-2:] for e in hrefs]}
     #author_id_name_list = [e.split('/')[-2:] for e in hrefs]
-    return [f"{ssid},{','.join(e.split('/')[-2:])}" for e in hrefs]
+    return [f"{pmid},{ssid},{','.join(e.split('/')[-2:])}" for e in hrefs]
 
 '''
 s = BeautifulSoup(open('/tmp/aa').read())                                      
@@ -1204,10 +1227,10 @@ def main():
     #search_semanticscholar_with_title()
     #selenium_browser_search()
     #quick_statistics_selenium()
-    #parse_selenium_result()
+    parse_selenium_result()
     #download_json_with_SS_api()
     #parse_json_obtained_with_SS_api()
-    gen_author_author_and_author_info_by_merging_two_SS_csv_files()
+    #gen_author_author_and_author_info_by_merging_two_SS_csv_files()
 
     #patentsvieworg_process_and_kaggle2013()  # including the part of using the result of running Kaggle2013 winning solution
 
