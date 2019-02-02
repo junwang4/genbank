@@ -730,10 +730,11 @@ def parse_selenium_result():
     folder_cache = f"{DATA_ROOT}/pubmed_300k/semanticscholar/cache"
     fpath_SS_selenium = f"{folder_cache}/../SS_selenium_tmp.csv" # ssid,name,author_id,pmid
     SS_pmids_already_parsed = {}
+    df_already = None
     if os.path.exists(fpath_SS_selenium):
-        df = pd.read_csv(fpath_SS_selenium, dtype={'pmid':'str'})
-        SS_pmids_already_parsed = set(df.pmid.tolist())
-        print(f'rows: {len(df.ssid.tolist()):,}\nssid cnt: {len(SS_pmids_already_parsed):,}')
+        df_already = pd.read_csv(fpath_SS_selenium, dtype={'pmid':'str'})
+        SS_pmids_already_parsed = set(df_already.pmid.tolist())
+        print(f'rows: {len(df_already.ssid.tolist()):,}\nssid cnt: {len(SS_pmids_already_parsed):,}')
 
     df = pd.read_csv(f'{folder_cache}/../../pmids_not_covered_by_SS.dat', sep='\t', header=None, names='pmid title year'.split(), dtype={'year':'str', 'pmid':'str'})
     pmid_title = {pmid:title for pmid, title in zip(df.pmid, df.title)}
@@ -777,6 +778,11 @@ def parse_selenium_result():
     print(f'eqs: {eqs}    title_not_matches: {title_not_matches}     not_found: {not_found}     success ratio: {success:.2f}')
     fout_SS_selenium = f"{folder_cache}/../SS_selenium_tmp2.csv"
     open(fout_SS_selenium, 'w').write('\n'.join(out))
+    df_ = pd.read_csv(fout_SS_selenium)
+    df = pd.concat((df_, df_already))
+    fout_SS_selenium = f"{folder_cache}/../SS_selenium_tmp.csv"
+    df.to_csv(fout_SS_selenium, index=False)
+
     fout_SS_selenium_status = f"{folder_cache}/../SS_selenium_tmp2_status.csv"
     open(fout_SS_selenium_status, 'w').write('\n'.join(out_processed_pmids))
 def get_ssid_and_authorid(pmid, s):
