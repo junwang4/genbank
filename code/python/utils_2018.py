@@ -532,7 +532,8 @@ def gen_author_author_and_author_info_by_merging_two_SS_csv_files():
     fpath_out = f'{folder}/genbank_published_author_name_merged.csv'
     df = pd.DataFrame(out)
     df['papers'] = df.ssids.apply(lambda x:len(x.split()))
-    df.sort_values('papers', ascending=False).to_csv(fpath_out, index=False)
+    cols = 'author_id,name,papers,ssids'.split(',')
+    df.sort_values('papers', ascending=False)[cols].to_csv(fpath_out, index=False)
 
 def parse_json_obtained_with_SS_api():
     folder = f"{DATA_ROOT}/pubmed_300k/semanticscholar"
@@ -542,6 +543,10 @@ def parse_json_obtained_with_SS_api():
     authorid_name = {}
     auid_auid_freq = {}
     out_ssid_auid = [] # ssid, authorid
+
+    df_pmid_ssid = pd.read_csv(f'{folder}/pmid_ssid.csv', dtype={'pmid':'str'})
+    ssid_pmid = {ssid:pmid for ssid, pmid in zip(df_pmid_ssid.ssid, df_pmid_ssid.pmid)}
+
     for fpath in glob.glob(f'{folder_json}/*'):
         ssid = fpath.split('/')[-1]
         if os.path.getsize(fpath)==0:  
@@ -568,7 +573,8 @@ def parse_json_obtained_with_SS_api():
                     print('- 1+ author ids:', ssid, ' '.join(auids))
                 auid = auids[0]
                 co_auids.append(auid)
-                out_ssid_auid.append({'ssid':ssid, 'author_id':auid, 'name':name})
+                pmid = ssid_pmid[ssid]
+                out_ssid_auid.append({'pmid':pmid, 'ssid':ssid, 'author_id':auid, 'name':name})
                 authorid_name[auid] = name
                 if not auid in authorid_ssids:
                     authorid_ssids[auid] = []
@@ -579,8 +585,8 @@ def parse_json_obtained_with_SS_api():
                         co_str = f'{coau1} {coau2}'
                         auid_auid_freq[co_str] = auid_auid_freq.get(co_str, 0) +1
         #break
-    fpath_out = f'{folder}/SS_api_ssid_auid_name.csv'
-    df = pd.DataFrame(out_ssid_auid)['ssid name author_id'.split()]
+    fpath_out = f'{folder}/SS_api_pmid_ssid_auid_name.csv'
+    df = pd.DataFrame(out_ssid_auid)['pmid ssid name author_id'.split()]
     df.to_csv(fpath_out, index=False)
 
     out = [{'author_id1':aa.split()[0], 'author_id2':aa.split()[1], 'count':freq} for aa, freq in auid_auid_freq.items()]
@@ -605,8 +611,8 @@ def download_json_with_SS_api():
             cmd = f'wget https://www.semanticscholar.org/api/1/paper/{ssid} -O {dest_json}'
             os.system(cmd)
 
-    for cnt, line in enumerate(open(f'{folder}/ssids.dat').readlines()):
-        ssid = line.strip()
+    for cnt, line in enumerate(open(f'{folder}/pmid_ssid.dat').readlines()):
+        pmid, ssid = line.strip().split(',')
         dest_json = f'{folder_json}/{ssid}'
         if not os.path.exists(dest_json):
             download_ssid_json(ssid, dest_json)
@@ -624,17 +630,18 @@ def download_json_with_SS_api():
     
 def check_semanticscholar_36GB_with_pubmed300k():
     folder = f"{DATA_ROOT}/pubmed_300k/semanticscholar"
-    df = pd.read_csv(f'{folder}/paper_detail_with_doi.csv', usecols='pmid doi'.split())
+    df = pd.read_csv(f'{folder}/paper_detail_with_doi.csv', usecols='pmid doi'.split(), dtype={'pmid':'str'} )
     #pmid,doi,year,title,authors
     genbank_pmid_doi = {pmid:doi for pmid, doi in zip(df.pmid, df.doi)}
     genbank_ssids = []
+    genbank_pmid_ssids = []
     doi_cnt = 0
    
     folder_csv_SS = "/mnt/data/semanticscholar_corpus/csv"
     #folder_csv_SS = f'{folder}/csv'
     for fpath in glob.glob(f'{folder_csv_SS}/*.csv'):
         #pmid,ssid,doi,numInCitations,title,year,journalName
-        df = pd.read_csv(fpath, usecols='pmid ssid doi'.split())
+        df = pd.read_csv(fpath, usecols='pmid ssid doi'.split(), dtype={'pmid':'str'})
         df.fillna('', inplace=True)
         ss_pmid_ssid = {pmid:ssid for pmid, ssid in zip(df.pmid, df.ssid)}
         ss_doi_ssid = {doi:ssid for doi, ssid in zip(df.doi, df.ssid) if doi and len(doi)>0}
@@ -642,14 +649,17 @@ def check_semanticscholar_36GB_with_pubmed300k():
             ssid = False
             if pmid in ss_pmid_ssid:
                 ssid = ss_pmid_ssid[pmid]
+                genbank_pmid_ssids.append(f'{pmid},{ssid}')
             elif doi in ss_doi_ssid:
                 ssid = ss_doi_ssid[doi]
                 doi_cnt += 1
             if ssid:
-                genbank_ssids.append(ssid)
+                genbank_ssids.append(f'{ssid}')
     print('doi cnt:', doi_cnt)
-    with open(f'{folder}/ssids.dat', 'w') as fout:
+    with open(f'{folder}/ssids_2.dat', 'w') as fout:
         fout.write('\n'.join(genbank_ssids))
+    with open(f'{folder}/pmid_ssid.dat', 'w') as fout:
+        fout.write('\n'.join(genbank_pmid_ssids))
 
 # this does not work, it shows: {"error":"Sorry, an unexpected error occured. Please try again soon."}
 def search_semanticscholar_with_title():
@@ -1233,9 +1243,9 @@ def main():
     #search_semanticscholar_with_title()
     #selenium_browser_search()
     #quick_statistics_selenium()
-    parse_selenium_result()
+    #parse_selenium_result()
     #download_json_with_SS_api()
-    #parse_json_obtained_with_SS_api()
+    parse_json_obtained_with_SS_api()
     #gen_author_author_and_author_info_by_merging_two_SS_csv_files()
 
     #patentsvieworg_process_and_kaggle2013()  # including the part of using the result of running Kaggle2013 winning solution
