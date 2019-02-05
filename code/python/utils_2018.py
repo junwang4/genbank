@@ -495,7 +495,7 @@ def check_semanticscholar_pubmed():
     with open(fpath_out2, 'w') as fout:
         fout.write('\n'.join([f'{e}\t{genbank_pmid_title[e]}\t{genbank_pmid_year[e]}' for e in not_covered]))
 
-def create_SS_author_affilications():
+def create_SS_author_affilications_multi_steps():
     folder = f"{DATA_ROOT}/pubmed_300k"
     def add_order_to_df(df):
         order = []
@@ -591,7 +591,7 @@ def gen_author_author_and_author_info_by_merging_two_SS_csv_files():
         #break
     print('...')
     out = [{'author_id1':aa.split()[0], 'author_id2':aa.split()[1], 'count':freq} for aa, freq in auid_auid_freq.items()]
-    fpath_out = f'{folder}/genbank_published_author_author.csv'
+    fpath_out = f'{folder}/genbank_published_author_author_4million.csv'
     df = pd.DataFrame(out)
     df.sort_values('count', ascending=False).to_csv(fpath_out, index=False)
 
@@ -600,7 +600,7 @@ def gen_author_author_and_author_info_by_merging_two_SS_csv_files():
 
     #out = [{'author_id':auid, 'name':name, 'ssids':' '.join(authorid_ssids[auid])} for auid, name in authorid_name.items()]
     out = [{'author_id':auid, 'paper_cnt':len(authorid_ssids[auid]), 'name':name, 'orgs':get_sorted_orgs(authorid_orgs[auid]), 'pmids':' '.join(authorid_pmids[auid])} for auid, name in authorid_name.items()]
-    fpath_out = f'{folder}/genbank_published_author_info.csv'
+    fpath_out = f'{folder}/genbank_published_author_info_500k.csv'
     df = pd.DataFrame(out)
     #df['papers'] = df.ssids.apply(lambda x:len(x.split()))
     cols = 'author_id,name,paper_cnt,orgs,pmids'.split(',')
@@ -715,8 +715,6 @@ def parse_json_obtained_with_SS_api():
 
 def download_json_with_SS_api():
     folder = f"{DATA_ROOT}/pubmed_300k/semanticscholar"
-    folder_json = f"{folder}/json"
-
     # this url (www.semanticscholar.org/api/1/paper/ssid has "structuredAuthors":[{"firstName":"Axel","middleNames":[],"lastName":"Trefzer"},
     # while (https://api.semanticscholar.org/v1/paper/ssid) not have structured author info
     def download_ssid_json(ssid, dest_json):
@@ -724,8 +722,21 @@ def download_json_with_SS_api():
             cmd = f'wget https://www.semanticscholar.org/api/1/paper/{ssid} -O {dest_json}'
             os.system(cmd)
 
-    for cnt, line in enumerate(open(f'{folder}/pmid_ssid.dat').readlines()):
-        pmid, ssid = line.strip().split(',')
+    task = 'download_from_39G_open_corpus'
+    task = 'download_from_selenium'
+    if task == 'download_from_39G_open_corpus':
+        folder_json = f"{folder}/json"
+        fpath_pmid_ssid = f"{folder}/pmid_ssid.csv"
+    else:
+        folder_json = f"{folder}/json_selenium"
+        df = pd.read_csv(f'{folder}/SS_selenium.csv', dtype={'pmid':'str'}) #pmid,ssid,name,author_id
+        fpath_pmid_ssid = f"{folder}/pmid_ssid_selenium.csv"
+        df[['pmid', 'ssid']].to_csv(fpath_pmid_ssid, index=False)
+
+    df = pd.read_csv(fpath_pmid_ssid, dtype={'pmid':'str'})
+    cnt = 0
+    for pmid, ssid in zip(df.pmid, df.ssid):
+        cnt += 1
         dest_json = f'{folder_json}/{ssid}'
         if not os.path.exists(dest_json):
             download_ssid_json(ssid, dest_json)
@@ -1357,10 +1368,10 @@ def main():
     #selenium_browser_search()
     #quick_statistics_selenium()
     #parse_selenium_result()
-    #download_json_with_SS_api()
+    download_json_with_SS_api()
     #parse_json_obtained_with_SS_api()
-    #create_SS_author_affilications()
-    gen_author_author_and_author_info_by_merging_two_SS_csv_files()
+    #create_SS_author_affilications_multi_steps()
+    #gen_author_author_and_author_info_by_merging_two_SS_csv_files()
 
     #patentsvieworg_process_and_kaggle2013()  # including the part of using the result of running Kaggle2013 winning solution
 
