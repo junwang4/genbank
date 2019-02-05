@@ -495,45 +495,117 @@ def check_semanticscholar_pubmed():
     with open(fpath_out2, 'w') as fout:
         fout.write('\n'.join([f'{e}\t{genbank_pmid_title[e]}\t{genbank_pmid_year[e]}' for e in not_covered]))
 
+def create_SS_author_affilications():
+    folder = f"{DATA_ROOT}/pubmed_300k"
+    def add_order_to_df(df):
+        order = []
+        df = df.sort_values('pmid', kind='mergesort')
+        print(df[df.pmid=='7656982'])
+        for pmid, grp in df.groupby('pmid'):#, sort=False):
+            order += list(range(len(grp)))
+        df['order'] = order
+        return df
+
+    def step1_pubmed_300k():
+        # PaperId,AuthorId,Name,Affiliation
+        fpath_kaggle_pmid_name_aff = f'{folder}/kaggle2013/PaperAuthor.csv'
+        fpath_out = f'{folder}/kaggle2013/PaperAuthor_with_org_and_order_per_author.csv'
+        df = pd.read_csv(fpath_kaggle_pmid_name_aff, dtype={'PaperId':'str'}, usecols='PaperId Name Affiliation'.split())
+        #df = pd.read_csv(fpath_kaggle_pmid_name_aff, dtype={'PaperId':'str'}, usecols='PaperId Name Affiliation'.split(), nrows=24)
+        df.rename(index=str, columns={'PaperId':'pmid', 'Name':'author_name', 'Affiliation':'org'}, inplace=True)
+        df.fillna('', inplace=True)
+        df = add_order_to_df(df)
+
+        add_org_for_non_first_authors = 1
+        if add_org_for_non_first_authors:
+            pmid_org = {pmid:org for pmid, org in zip(df.pmid, df.org) if org}
+            df['org'] = df.apply(lambda x: x['org'] if x['org'] else pmid_org[x['pmid']] if x['pmid'] in pmid_org else 'NULL', axis=1)
+            df.to_csv(fpath_out, index=False)
+
+    def step2_add_order_to_SS_api_and_selenium():
+        fpath = f'{folder}/semanticscholar/SS_api_pmid_ssid_auid_name.csv'
+        df1 = pd.read_csv(fpath, dtype={'pmid':'str'})
+        df1 = add_order_to_df(df1)
+        if 1:
+            fpath = f'{folder}/semanticscholar/SS_selenium.csv'
+            df2 = pd.read_csv(fpath, dtype={'pmid':'str'})
+            df2 = add_order_to_df(df2)
+            dff = pd.concat((df1, df2))
+        else:
+            dff = df1
+        fpath_out = f'{folder}/semanticscholar/SS_merged_api_and_selenium_and_plus_author_order.csv'
+        dff.to_csv(fpath_out, index=False)
+
+    def step3_merge_the_above_steps_to_create_big_csv():
+        fpath1 = f'{folder}/kaggle2013/PaperAuthor_with_org_and_order_per_author.csv'
+        fpath2 = f'{folder}/semanticscholar/SS_merged_api_and_selenium_and_plus_author_order.csv'
+        df1 = pd.read_csv(fpath1, dtype={'pmid':'str'})
+        print(df1.columns)
+        df2 = pd.read_csv(fpath2, dtype={'pmid':'str'})
+        print(df2.columns)
+        df = df1.merge(df2, on=['pmid', 'order'])
+        cols = 'pmid,order,org,author_name,name,ssid,author_id'.split(',')
+        df[cols].to_csv(f'{folder}/semanticscholar/final_pmid_ssid_authornameandid_org.csv', index=False)
+
+    #step1_pubmed_300k() # 70 seconds
+    step2_add_order_to_SS_api_and_selenium() # 30 seconds
+    step3_merge_the_above_steps_to_create_big_csv()  # 15 seconds
+
+
 def gen_author_author_and_author_info_by_merging_two_SS_csv_files():
     folder = f"{DATA_ROOT}/pubmed_300k/semanticscholar"
-    fpath1 = f'{folder}/SS_api_ssid_auid_name.csv'
-    fpath2 = f'{folder}/SS_selenium.csv'
-    df1 = pd.read_csv(fpath1)
-    df2 = pd.read_csv(fpath2)
-    df = pd.concat((df1, df2))
-    print(df1.shape, df2.shape, df.shape)
-    print('ssid cnt:', len(df.ssid.unique()))
+    fpath = f'{folder}/final_pmid_ssid_authornameandid_org.csv'
+    df = pd.read_csv(fpath, dtype={'pmid':'str'})
+    #pmid,order,org,author_name,name,ssid,author_id
+    
+    #fpath1 = f'{folder}/SS_api_ssid_auid_name.csv'
+    #fpath2 = f'{folder}/SS_selenium.csv'
+    #df1 = pd.read_csv(fpath1)
+    #df2 = pd.read_csv(fpath2)
+    #df = pd.concat((df1, df2))
+    #print(df1.shape, df2.shape, df.shape)
+    #print('ssid cnt:', len(df.ssid.unique()))
 
     auid_auid_freq = {}
     authorid_name = {}
     authorid_ssids = {}
-    for grp in df.groupby('ssid'):
-        grp = grp[1]
+    authorid_orgs = {}
+    authorid_pmids = {}
+    for pmid, grp in df.groupby('ssid'):
         co_auids = []
-        for ssid, auid, name in zip(grp.ssid, grp.author_id, grp.name):
+        for pmid, ssid, auid, name, org in zip(grp.pmid, grp.ssid, grp.author_id, grp.name, grp.org):
             co_auids.append(auid)
             authorid_name[auid] = name
             if not auid in authorid_ssids:
                 authorid_ssids[auid] = []
+                authorid_pmids[auid] = []
+                authorid_orgs[auid] = {}
             authorid_ssids[auid].append(ssid)
+            authorid_pmids[auid].append(pmid)
+            authorid_orgs[auid][org] = authorid_orgs[auid].get(org, 0) +1
         for coau1 in co_auids:
             for coau2 in co_auids:
                 if int(coau1) < int(coau2):
                     co_str = f'{coau1} {coau2}'
                     auid_auid_freq[co_str] = auid_auid_freq.get(co_str, 0) +1
         #break
+    print('...')
     out = [{'author_id1':aa.split()[0], 'author_id2':aa.split()[1], 'count':freq} for aa, freq in auid_auid_freq.items()]
-    fpath_out = f'{folder}/genbank_published_author_author_merged.csv'
+    fpath_out = f'{folder}/genbank_published_author_author.csv'
     df = pd.DataFrame(out)
     df.sort_values('count', ascending=False).to_csv(fpath_out, index=False)
 
-    out = [{'author_id':auid, 'name':name, 'ssids':' '.join(authorid_ssids[auid])} for auid, name in authorid_name.items()]
-    fpath_out = f'{folder}/genbank_published_author_name_merged.csv'
+    def get_sorted_orgs(org_cnt):
+        return json.dumps( sorted(org_cnt.items(), key=lambda x:x[1], reverse=True) )
+
+    #out = [{'author_id':auid, 'name':name, 'ssids':' '.join(authorid_ssids[auid])} for auid, name in authorid_name.items()]
+    out = [{'author_id':auid, 'paper_cnt':len(authorid_ssids[auid]), 'name':name, 'orgs':get_sorted_orgs(authorid_orgs[auid]), 'pmids':' '.join(authorid_pmids[auid])} for auid, name in authorid_name.items()]
+    fpath_out = f'{folder}/genbank_published_author_info.csv'
     df = pd.DataFrame(out)
-    df['papers'] = df.ssids.apply(lambda x:len(x.split()))
-    cols = 'author_id,name,papers,ssids'.split(',')
-    df.sort_values('papers', ascending=False)[cols].to_csv(fpath_out, index=False)
+    #df['papers'] = df.ssids.apply(lambda x:len(x.split()))
+    cols = 'author_id,name,paper_cnt,orgs,pmids'.split(',')
+    df.sort_values('paper_cnt', ascending=False)[cols].to_csv(fpath_out, index=False)
+
 
 def parse_json_obtained_with_SS_api():
     folder = f"{DATA_ROOT}/pubmed_300k/semanticscholar"
@@ -544,11 +616,41 @@ def parse_json_obtained_with_SS_api():
     auid_auid_freq = {}
     out_ssid_auid = [] # ssid, authorid
 
-    df_pmid_ssid = pd.read_csv(f'{folder}/pmid_ssid.csv', dtype={'pmid':'str'})
-    ssid_pmid = {ssid:pmid for ssid, pmid in zip(df_pmid_ssid.ssid, df_pmid_ssid.pmid)}
+    def build_map_between_ssid_and_redirected_ssid():
+        cnt = 0
+        ssid_newssid = {}
+        newssid_ssid = {}
+        for fpath in glob.glob(f'{folder_json}/*'):
+            fsize = os.path.getsize(fpath)
+            if fsize < 500 and fsize > 0:
+                cnt += 1
+                try:
+                    data = json.load(open(fpath))
+                    if 'canonicalId' in data:
+                        ssid = fpath.split('/')[-1]
+                        ssid_new = data['canonicalId']
+                        ssid_newssid[ssid] = ssid_new
+                        newssid_ssid[ssid_new] = ssid
+                except:
+                    print(fpath)
+                    break
+        print(cnt, 'ssid_newssid size:', len(ssid_newssid))
+        return ssid_newssid, newssid_ssid
 
+    ssid_newssid, newssid_ssid = build_map_between_ssid_and_redirected_ssid()
+
+    df_pmid_ssid = pd.read_csv(f'{folder}/pmid_ssid.csv', dtype={'pmid':'str', 'ssid':'str'})
+    ssid_pmid = {ssid:pmid for ssid, pmid in zip(df_pmid_ssid.ssid, df_pmid_ssid.pmid)}
+    print('old ssid_pmid:', len(ssid_pmid))
+    for ssid, newssid in ssid_newssid.items():
+        if ssid in ssid_pmid:
+            ssid_pmid[newssid] = ssid_pmid[ssid]
+    print('new ssid_pmid:', len(ssid_pmid))
+
+    missing_pmids = 0
     for fpath in glob.glob(f'{folder_json}/*'):
         ssid = fpath.split('/')[-1]
+
         if os.path.getsize(fpath)==0:  
             print('- empty file download:', ssid)
             continue
@@ -557,11 +659,20 @@ def parse_json_obtained_with_SS_api():
         except:
             print('- bad json format downloaded with SS API:', ssid)
             continue
+
         if data["responseType"] == "PAPER_DETAIL":
             paper = data["paper"]
             authors = paper["authors"]
             #"authors":[[{"name":"Thomas M. Schultheiss","ids":["3960467"]
             co_auids = []
+
+            if ssid in ssid_pmid:
+                pmid = ssid_pmid[ssid]
+            else:
+                print('weird no pmid - ssid', ssid)
+                missing_pmids += 1
+                #return
+
             for au in authors:
                 au = au[0]
                 name = au['name']
@@ -573,7 +684,6 @@ def parse_json_obtained_with_SS_api():
                     print('- 1+ author ids:', ssid, ' '.join(auids))
                 auid = auids[0]
                 co_auids.append(auid)
-                pmid = ssid_pmid[ssid]
                 out_ssid_auid.append({'pmid':pmid, 'ssid':ssid, 'author_id':auid, 'name':name})
                 authorid_name[auid] = name
                 if not auid in authorid_ssids:
@@ -585,6 +695,8 @@ def parse_json_obtained_with_SS_api():
                         co_str = f'{coau1} {coau2}'
                         auid_auid_freq[co_str] = auid_auid_freq.get(co_str, 0) +1
         #break
+    print('missing_pmids (reason: has doi but no pmid):', missing_pmids)
+
     fpath_out = f'{folder}/SS_api_pmid_ssid_auid_name.csv'
     df = pd.DataFrame(out_ssid_auid)['pmid ssid name author_id'.split()]
     df.to_csv(fpath_out, index=False)
@@ -599,6 +711,7 @@ def parse_json_obtained_with_SS_api():
     df = pd.DataFrame(out)
     df['papers'] = df.ssids.apply(lambda x:len(x.split()))
     df.sort_values('papers', ascending=False).to_csv(fpath_out, index=False)
+
 
 def download_json_with_SS_api():
     folder = f"{DATA_ROOT}/pubmed_300k/semanticscholar"
@@ -1245,8 +1358,9 @@ def main():
     #quick_statistics_selenium()
     #parse_selenium_result()
     #download_json_with_SS_api()
-    parse_json_obtained_with_SS_api()
-    #gen_author_author_and_author_info_by_merging_two_SS_csv_files()
+    #parse_json_obtained_with_SS_api()
+    #create_SS_author_affilications()
+    gen_author_author_and_author_info_by_merging_two_SS_csv_files()
 
     #patentsvieworg_process_and_kaggle2013()  # including the part of using the result of running Kaggle2013 winning solution
 
