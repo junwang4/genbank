@@ -1,5 +1,6 @@
 import re, os, time, glob, csv, re, json, sys
 from collections import OrderedDict
+from urllib.parse import quote
 import numpy as np
 import pandas as pd
 import socket
@@ -495,7 +496,7 @@ def check_semanticscholar_pubmed():
     with open(fpath_out2, 'w') as fout:
         fout.write('\n'.join([f'{e}\t{genbank_pmid_title[e]}\t{genbank_pmid_year[e]}' for e in not_covered]))
 
-def create_SS_author_affilications_multi_steps():
+def multi_steps_create_SS_author_affilications():
     folder = f"{DATA_ROOT}/pubmed_300k"
     def add_order_to_df(df):
         order = []
@@ -527,7 +528,8 @@ def create_SS_author_affilications_multi_steps():
         df1 = pd.read_csv(fpath, dtype={'pmid':'str'})
         df1 = add_order_to_df(df1)
         if 1:
-            fpath = f'{folder}/semanticscholar/SS_selenium.csv'
+            #fpath = f'{folder}/semanticscholar/SS_selenium.csv'
+            fpath = f'{folder}/semanticscholar/SS_api_pmid_ssid_auid_name_selenium.csv'
             df2 = pd.read_csv(fpath, dtype={'pmid':'str'})
             df2 = add_order_to_df(df2)
             dff = pd.concat((df1, df2))
@@ -544,7 +546,8 @@ def create_SS_author_affilications_multi_steps():
         df2 = pd.read_csv(fpath2, dtype={'pmid':'str'})
         print(df2.columns)
         df = df1.merge(df2, on=['pmid', 'order'])
-        cols = 'pmid,order,org,author_name,name,ssid,author_id'.split(',')
+        cols = 'pmid,order,author_name,name,ssid,author_id,org'.split(',')
+        print('unique pmid:', len(df.pmid.unique()))
         df[cols].to_csv(f'{folder}/semanticscholar/final_pmid_ssid_authornameandid_org.csv', index=False)
 
     #step1_pubmed_300k() # 70 seconds
@@ -557,7 +560,7 @@ def gen_author_author_and_author_info_by_merging_two_SS_csv_files():
     fpath = f'{folder}/final_pmid_ssid_authornameandid_org.csv'
     df = pd.read_csv(fpath, dtype={'pmid':'str'})
     #pmid,order,org,author_name,name,ssid,author_id
-    
+
     #fpath1 = f'{folder}/SS_api_ssid_auid_name.csv'
     #fpath2 = f'{folder}/SS_selenium.csv'
     #df1 = pd.read_csv(fpath1)
@@ -571,6 +574,9 @@ def gen_author_author_and_author_info_by_merging_two_SS_csv_files():
     authorid_ssids = {}
     authorid_orgs = {}
     authorid_pmids = {}
+    df.fillna('', inplace=True)
+    df['org'] = df.org.apply(lambda x: (re.sub(r'^[^A-Z]{,4}', '', x) if x else x).strip())
+    
     for pmid, grp in df.groupby('ssid'):
         co_auids = []
         for pmid, ssid, auid, name, org in zip(grp.pmid, grp.ssid, grp.author_id, grp.name, grp.org):
@@ -582,7 +588,8 @@ def gen_author_author_and_author_info_by_merging_two_SS_csv_files():
                 authorid_orgs[auid] = {}
             authorid_ssids[auid].append(ssid)
             authorid_pmids[auid].append(pmid)
-            authorid_orgs[auid][org] = authorid_orgs[auid].get(org, 0) +1
+            if org:
+                authorid_orgs[auid][org] = authorid_orgs[auid].get(org, 0) +1
         for coau1 in co_auids:
             for coau2 in co_auids:
                 if int(coau1) < int(coau2):
@@ -591,16 +598,16 @@ def gen_author_author_and_author_info_by_merging_two_SS_csv_files():
         #break
     print('...')
     out = [{'author_id1':aa.split()[0], 'author_id2':aa.split()[1], 'count':freq} for aa, freq in auid_auid_freq.items()]
-    fpath_out = f'{folder}/genbank_published_author_author_4million.csv'
+    fpath_out = f'{folder}/genbank_published_author_author_5million.csv'
     df = pd.DataFrame(out)
     df.sort_values('count', ascending=False).to_csv(fpath_out, index=False)
 
     def get_sorted_orgs(org_cnt):
-        return json.dumps( sorted(org_cnt.items(), key=lambda x:x[1], reverse=True) )
+        return json.dumps( {org:cnt for org, cnt in sorted(org_cnt.items(), key=lambda x:x[1], reverse=True)} )
 
     #out = [{'author_id':auid, 'name':name, 'ssids':' '.join(authorid_ssids[auid])} for auid, name in authorid_name.items()]
     out = [{'author_id':auid, 'paper_cnt':len(authorid_ssids[auid]), 'name':name, 'orgs':get_sorted_orgs(authorid_orgs[auid]), 'pmids':' '.join(authorid_pmids[auid])} for auid, name in authorid_name.items()]
-    fpath_out = f'{folder}/genbank_published_author_info_500k.csv'
+    fpath_out = f'{folder}/genbank_published_author_info_600k.csv'
     df = pd.DataFrame(out)
     #df['papers'] = df.ssids.apply(lambda x:len(x.split()))
     cols = 'author_id,name,paper_cnt,orgs,pmids'.split(',')
@@ -745,7 +752,10 @@ def download_json_with_SS_api():
                 continue
             else:
                 print(ssid, '<smaller than 500>')
-                data = json.load(open(dest_json))
+                try:
+                    data = json.load(open(dest_json))
+                except:
+                    continue
                 if 'canonicalId' in data:
                     ssid_new = data['canonicalId']
                     dest_json = f'{folder_json}/{ssid_new}'
@@ -786,7 +796,7 @@ def check_semanticscholar_36GB_with_pubmed300k():
         fout.write('\n'.join(genbank_pmid_ssids))
 
 # this does not work, it shows: {"error":"Sorry, an unexpected error occured. Please try again soon."}
-def search_semanticscholar_with_title():
+def search_semanticscholar_with_title__NOT_WORKING():
     import requests
     headers = {"Accept-Encoding": "gzip", 'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/31.0.1623.0 Safari/537.36', 'Origin': 'https://www.semanticscholar.org', 'content-type':'application/json'}
     title = "Evolutionary"
@@ -800,6 +810,63 @@ def search_semanticscholar_with_title():
         time.sleep(2)
         r = session.post('https://www.semanticscholar.org/api/1/search', data=data)
         print(r.text)
+
+
+def fetch_json_from_microsoft_cognitive_api():
+    import http.client, urllib.request, urllib.parse, urllib.error, base64
+    api_key_fname = os.path.expanduser('~/.ssh/azure_api_key.dat')
+    if not os.path.exists(api_key_fname):
+        print('\n Error. Solution: Apply a microsoft azure api key, and put the key into file "~/.ssh/azure_api_key.dat"\n')
+        return
+    api_key = open(api_key_fname).read().strip()
+
+    def fetch_MS_via_python(title, fpath_out):
+        headers = { 'Ocp-Apim-Subscription-Key': api_key }
+        params = urllib.parse.urlencode({
+            'query': title,
+            'complete': '1',
+            'count': '10',
+            'timeout': '9000',
+            })
+        try:
+            conn = http.client.HTTPSConnection('api.labs.cognitive.microsoft.com')
+            body = ""
+            conn.request("GET", "/academic/v1.0/interpret?%s" % params, f"{body}", headers)
+            response = conn.getresponse()
+            data = response.read()
+            open(fpath_out, 'wb').write(data)
+            conn.close()
+        except Exception as e:
+            print("[Errno {0}] {1}".format(e.errno, e.strerror))
+
+    def fetch_MS_via_curl(title, fpath_out):
+        url_interpret = "https://api.labs.cognitive.microsoft.com/academic/v1.0/interpret?"
+        query = quote(title, safe='')
+        url = f'"{url_interpret}query={query}&complete=1&count=10&timeout=9000" -H "Ocp-Apim-Subscription-Key: {api_key}"'
+        cmd = f'curl {url} -o {fpath_out}'
+        print(cmd)
+        os.system(cmd)
+
+
+    folder = f"{DATA_ROOT}/pubmed_300k/microsoft"
+    folder_json_interpret = f"{DATA_ROOT}/pubmed_300k/microsoft/json_interpret"
+    df = pd.read_csv(f'{folder}/../kaggle2013/Paper.csv', usecols='Id Title'.split(), dtype={'Id':'str'})
+    df.rename(index=str, columns={'Id':'pmid', 'Title':"title"}, inplace=True)
+    #df = df.sort_values('year', ascending=False)
+    cnt = 0
+    tic = time.time()
+    for pmid, title in zip(df.pmid, df.title):
+        print(pmid, title)
+        fpath_out = f'{folder_json_interpret}/{pmid}'
+        if os.path.exists(fpath_out) and os.path.getsize(fpath_out)>300:
+            continue
+        fetch_MS_via_python(title, fpath_out)
+        time.sleep(2)
+
+    #data = open('/tmp/a.json').read()
+    #data = json.loads(data)
+    #print(data)
+    #data['interpretations'][0]['rules'][0]['output']['value']
 
 
 def selenium_browser_search():
@@ -1364,14 +1431,16 @@ def main():
 
     #check_semanticscholar_pubmed()
     #check_semanticscholar_36GB_with_pubmed300k()
-    #search_semanticscholar_with_title()
+    ##search_semanticscholar_with_title__NOT_WORKING()
     #selenium_browser_search()
     #quick_statistics_selenium()
     #parse_selenium_result()
-    download_json_with_SS_api()
+    #download_json_with_SS_api()
     #parse_json_obtained_with_SS_api()
-    #create_SS_author_affilications_multi_steps()
+    #multi_steps_create_SS_author_affilications()
     #gen_author_author_and_author_info_by_merging_two_SS_csv_files()
+
+    fetch_json_from_microsoft_cognitive_api()
 
     #patentsvieworg_process_and_kaggle2013()  # including the part of using the result of running Kaggle2013 winning solution
 
