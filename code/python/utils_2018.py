@@ -812,61 +812,142 @@ def search_semanticscholar_with_title__NOT_WORKING():
         print(r.text)
 
 
+import unidecode
 def fetch_json_from_microsoft_cognitive_api():
+    def normalize_title(s): return re.sub(r'\W+',' ', unidecode.unidecode(s)).lower().replace('  ', ' ').strip()
+
+    print('running normalize_title() and then directly access "evaluate" instead of "interpret" mode')
+    print('among the 9114 cases, only 44 of them changed')
+    print('examples: tü901 => tu901, krüppel=>kruppel     and 29 others something like\n', """
+molecular characterization of an autoallergen hom s 1 identified by serum ige from atopic dermatitis patients
+molecular characterization of an autoallergen hom s 1 identified by serum ige from atopic dermatitis patients1
+
+kinetic study of the active site structure of b amylase from bacillus cereus var mycoides
+kinetic study of the active site structure of β amylase from bacillus cereus var mycoides
+
+mutations in the liver glycogen phosphorylase gene pygl underlying glycogenosis type vi
+mutations in the liver glycogen phosphorylase gene pygl underlying glycogenosis type vi hers disease
+
+""")
+
+    return
     import http.client, urllib.request, urllib.parse, urllib.error, base64
+
+    folder = f"{DATA_ROOT}/pubmed_300k/microsoft"
+
     api_key_fname = os.path.expanduser('~/.ssh/azure_api_key.dat')
     if not os.path.exists(api_key_fname):
         print('\n Error. Solution: Apply a microsoft azure api key, and put the key into file "~/.ssh/azure_api_key.dat"\n')
         return
     api_key = open(api_key_fname).read().strip()
 
-    def fetch_MS_via_python(title, fpath_out):
+    def fetch_MS_via_curl(title, fpath_out, mode='evaluate'):
+        url_basic = f"https://api.labs.cognitive.microsoft.com/academic/v1.0/{mode}?"
+        query = quote(title, safe='')
+        url = f'"{url_basic}query={query}&complete=1&count=10&timeout=19000" -H "Ocp-Apim-Subscription-Key: {api_key}"'
+        cmd = f'curl {url} -o {fpath_out}'
+        print(cmd)
+        os.system(cmd)
+
+    def fetch_MS_via_python(query, fpath_out, mode='evaluate'):
+        if mode=='interpret':
+            params = urllib.parse.urlencode({
+                'query': query,
+                'complete': '0',
+                'count': '10',
+                'timeout': '19000',
+                })
+        if mode=='evaluate':
+                #'expr': f"Ti='{title}'",
+            params = urllib.parse.urlencode({
+                'expr': query,
+                'count': '10',
+                'attributes': 'Ti,Y,CC,AA.AuN,AA.AuId'
+                })
+
         headers = { 'Ocp-Apim-Subscription-Key': api_key }
-        params = urllib.parse.urlencode({
-            'query': title,
-            'complete': '1',
-            'count': '10',
-            'timeout': '9000',
-            })
+        url = f"/academic/v1.0/{mode}?%s" % params
+        #print(url)
         try:
             conn = http.client.HTTPSConnection('api.labs.cognitive.microsoft.com')
-            body = ""
-            conn.request("GET", "/academic/v1.0/interpret?%s" % params, f"{body}", headers)
+            conn.request("GET", url, body=None, headers=headers)
             response = conn.getresponse()
             data = response.read()
+            #print(data)
             open(fpath_out, 'wb').write(data)
             conn.close()
         except Exception as e:
             print("[Errno {0}] {1}".format(e.errno, e.strerror))
 
-    def fetch_MS_via_curl(title, fpath_out):
-        url_interpret = "https://api.labs.cognitive.microsoft.com/academic/v1.0/interpret?"
-        query = quote(title, safe='')
-        url = f'"{url_interpret}query={query}&complete=1&count=10&timeout=9000" -H "Ocp-Apim-Subscription-Key: {api_key}"'
-        cmd = f'curl {url} -o {fpath_out}'
-        print(cmd)
-        os.system(cmd)
+
+    mode = "evaluate"
+    mode = "interpret"
+
+    if 0:
+        title = "human thymidine kinase 2 molecular cloning and characterisation of the enzyme activity with antiviral and cytostatic nucleoside substrates"
+        title = "posterior end mark 2 pem 2 pem 4 pem 5 and pem 6 maternal genes with localized mrna in the ascidian embryo by satou 1997"
+        fetch_MS_via_python(title, '/tmp/a.json', mode='interpret')
+        return
+    if 1:
+        mode = "evaluate"
+        cnt_ti, cnt_other, cnt_error, cnt_null_interpretation = 0, 0, 0, 0
+        calls = 0
+        out = []
+        for fpath in glob.glob(f'{folder}/json_interpret/*'):
+            pmid = fpath.split('/')[-1]
+            if os.path.getsize(fpath)==131: continue
+            data = open(fpath).read()
+            data = json.loads(data)
+            response = ''
+            try:
+                if len(data['interpretations'])==0:
+                    #print(pmid, data)
+                    cnt_null_interpretation += 1
+                    out.append({'pmid':pmid, 'response':'ZERO INTERPRETATIONS'})
+                    #break
+                    continue
+                v = data['interpretations'][0]['rules'][0]['output']['value']
+                if v[:3] == "Ti=":
+                    out.append({'pmid':pmid, 'response':v.split('Ti==')[1][1:-1]})
+                    cnt_ti +=1
+                    fpath_out = f'{folder}/json_{mode}/{pmid}'
+                    #fetch_MS_via_python(v, fpath_out, mode='evaluate')
+                    calls += 1
+                    #break
+                    #if calls > 1000: return
+                else:
+                    #print(pmid, v)
+                    cnt_other += 1
+                    out.append({'pmid':pmid, 'response':f'AAA {v}'})
+            except:
+                #print(pmid, data)
+                cnt_error += 1
+                out.append({'pmid':pmid, 'response':'ERROR'+json.dumps(data)})
+        dff = pd.DataFrame(out)
+        df = pd.read_csv(f'{folder}/../kaggle2013/Paper.csv', usecols='Id Title'.split(), dtype={'Id':'str'})
+        df.rename(index=str, columns={'Id':'pmid', 'Title':"title"}, inplace=True)
+        pmid_title = {pmid:title for pmid, title in zip(df.pmid, df.title)}
+        dd = dff.merge(df)
+        dd.to_csv('/tmp/a.csv', index=False)
+
+        print(cnt_ti, cnt_other, cnt_error, cnt_null_interpretation)
+        print(cnt_ti + cnt_other + cnt_error + cnt_null_interpretation)
+        return
 
 
-    folder = f"{DATA_ROOT}/pubmed_300k/microsoft"
-    folder_json_interpret = f"{DATA_ROOT}/pubmed_300k/microsoft/json_interpret"
+    return
     df = pd.read_csv(f'{folder}/../kaggle2013/Paper.csv', usecols='Id Title'.split(), dtype={'Id':'str'})
     df.rename(index=str, columns={'Id':'pmid', 'Title':"title"}, inplace=True)
-    #df = df.sort_values('year', ascending=False)
+    pmid_title = {pmid:title for pmid, title in zip(df.pmid, df.title)}
+
     cnt = 0
-    tic = time.time()
     for pmid, title in zip(df.pmid, df.title):
         print(pmid, title)
-        fpath_out = f'{folder_json_interpret}/{pmid}'
+        fpath_out = f'{folder}/json_{mode}/{pmid}'
         if os.path.exists(fpath_out) and os.path.getsize(fpath_out)>300:
             continue
-        fetch_MS_via_python(title, fpath_out)
+        fetch_MS_via_python(title, fpath_out, mode)
         time.sleep(2)
-
-    #data = open('/tmp/a.json').read()
-    #data = json.loads(data)
-    #print(data)
-    #data['interpretations'][0]['rules'][0]['output']['value']
 
 
 def selenium_browser_search():
